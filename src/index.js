@@ -271,7 +271,13 @@ async function check(env) {
     stripe_webhook_secret: env.STRIPE_WEBHOOK_SECRET ? 'set' : 'MISSING',
     signwell: await tryIt(() => signwellGet(env, '/hooks/')),
     clickup: await tryIt(() => cu(env, 'GET', `/space/${env.CLICKUP_SPACE_ID}`)),
-    resend_key: env.RESEND_API_KEY ? 'set' : 'MISSING',
+    // a sending only key gets 401 restricted (valid) on this read; a bad key gets 401 invalid
+    resend: await tryIt(async () => {
+      const r = await fetch('https://api.resend.com/domains', { headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` } });
+      const t = await r.text();
+      if (r.ok || /restricted/i.test(t)) return;
+      throw new Error(`${r.status} ${t}`);
+    }),
   });
 }
 
