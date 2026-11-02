@@ -51,8 +51,9 @@ async function signwell(req, env) {
 
   if (type === 'document_sent') {
     if (stageRank(env, deal.properties.dealstage) >= stageRank(env, env.STAGE_AGREEMENT_SENT)) return json({ skipped: 'already past Agreement Sent' });
-    await setStage(env, deal.id, env.STAGE_AGREEMENT_SENT);
+    // email first, stage last: the stage is the "already done" marker, so a failed email gets retried
     if (env.SEND_AGREEMENT_EMAIL === 'true') await sendAndLog(env, { to: client.email, contact, deal, ...agreementEmail({ firstName: first }) });
+    await setStage(env, deal.id, env.STAGE_AGREEMENT_SENT);
     return json({ ok: 'agreement sent handled', deal: deal.id });
   }
 
@@ -60,9 +61,9 @@ async function signwell(req, env) {
     if (stageRank(env, deal.properties.dealstage) >= stageRank(env, env.STAGE_SIGNED)) return json({ skipped: 'already past Signed' });
     const plan = await planForDeal(env, deal);
     if (!plan || plan.payLink.startsWith('TODO')) throw new Error(`no payment link for deal ${deal.id}`);
-    await setStage(env, deal.id, env.STAGE_SIGNED);
     const company = await companyName(env, deal, contact);
     await sendAndLog(env, { to: client.email, contact, deal, ...paymentEmail({ firstName: first, company, plan }) });
+    await setStage(env, deal.id, env.STAGE_SIGNED);
     await closeTasks(env, deal.id, [/not signed yet/i, /send the payment link/i]);
     return json({ ok: 'completed handled', deal: deal.id, plan: plan.key });
   }
@@ -113,14 +114,13 @@ async function stripe(req, env) {
   const company = s.custom_fields?.find((f) => /business|company/i.test(f.key))?.text?.value
     || (deal ? await companyName(env, deal, contact) : '') || contact?.properties?.company || s.customer_details?.name || 'New client';
 
-  if (deal) {
-    if (deal.properties.dealstage === env.STAGE_WON) return json({ skipped: 'already Client Won' });
-    await setStage(env, deal.id, env.STAGE_WON);
-  }
+  if (deal && deal.properties.dealstage === env.STAGE_WON) return json({ skipped: 'already Client Won' });
   if (plan) {
     await sendAndLog(env, { to: email, contact, deal, ...welcomeEmail({ firstName: first, company, plan }) });
     await clickupClient(env, company, plan);
   }
+  // stage last: it marks the payment as handled, so a failure above gets retried by Stripe
+  if (deal) await setStage(env, deal.id, env.STAGE_WON);
   return json({ ok: 'payment handled', deal: deal?.id || null, plan: plan?.key || null });
 }
 
