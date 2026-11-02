@@ -15,4 +15,4 @@ STAGE_WON = "closedwon"
 # "true" to auto send the branded "agreement is on its way" email when SignWell sends
 SEND_AGREEMENT_EMAIL = "true"
 # "true" makes every handler log what it would do without changing anything
-DRY_RUN = "false"
+DRY_RUN = "true"
