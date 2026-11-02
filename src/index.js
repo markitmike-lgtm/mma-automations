@@ -12,6 +12,7 @@ export default {
       if (req.method === 'GET' && url.pathname === '/health') return json({ ok: true });
       if (req.method === 'POST' && url.pathname === '/signwell') return await signwell(req, env);
       if (req.method === 'GET' && url.pathname === '/setup/signwell') return await signwellSetup(url, env);
+      if (req.method === 'GET' && url.pathname === '/check') return await check(env);
       if (req.method === 'POST' && url.pathname === '/stripe') return await stripe(req, env);
       return json({ error: 'not found' }, 404);
     } catch (e) {
@@ -240,7 +241,7 @@ async function sendAndLog(env, { to, contact, deal, subject, html }) {
 
 /* ---------------- ClickUp ---------------- */
 async function cu(env, method, path, body) {
-  if (env.DRY_RUN === 'true') { console.log('DRY RUN clickup', method, path, JSON.stringify(body)); return { id: 'dry' }; }
+  if (env.DRY_RUN === 'true' && method !== 'GET') { console.log('DRY RUN clickup', method, path, JSON.stringify(body)); return { id: 'dry' }; }
   const r = await fetch('https://api.clickup.com/api/v2' + path, {
     method,
     headers: { Authorization: env.CLICKUP_TOKEN, 'Content-Type': 'application/json' },
@@ -256,6 +257,20 @@ async function clickupClient(env, company, plan) {
   for (const name of CLIENT_LISTS) lists[name] = await cu(env, 'POST', `/folder/${folder.id}/list`, { name });
   for (const t of plan.deliverables) await cu(env, 'POST', `/list/${lists['Deliverables'].id}/task`, { name: t, description: `${plan.name}` });
   for (const t of ONBOARDING_TASKS) await cu(env, 'POST', `/list/${lists['Onboarding'].id}/task`, { name: t });
+}
+
+/* ---------------- key check (read only, returns pass or fail per service) ---------------- */
+async function check(env) {
+  const tryIt = async (fn) => { try { await fn(); return 'ok'; } catch (e) { return 'FAIL ' + String(e.message).slice(0, 120); } };
+  return json({
+    dry_run: env.DRY_RUN,
+    hubspot: await tryIt(() => hs(env, 'GET', '/crm/v3/objects/deals?limit=1')),
+    stripe: await tryIt(() => stripeGet(env, '/v1/products?limit=1')),
+    stripe_webhook_secret: env.STRIPE_WEBHOOK_SECRET ? 'set' : 'MISSING',
+    signwell: await tryIt(() => signwellGet(env, '/hooks/')),
+    clickup: await tryIt(() => cu(env, 'GET', `/space/${env.CLICKUP_SPACE_ID}`)),
+    resend_key: env.RESEND_API_KEY ? 'set' : 'MISSING',
+  });
 }
 
 /* ---------------- helpers ---------------- */
