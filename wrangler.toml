@@ -1,0 +1,18 @@
+name = "mma-automations"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# Non secret settings. Secrets (HUBSPOT_TOKEN, STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET,
+# SIGNWELL_WEBHOOK_ID, CLICKUP_TOKEN, RESEND_API_KEY) are added in the Cloudflare
+# dashboard under Settings > Variables and Secrets. They are never stored in this repo.
+[vars]
+OWNER_EMAIL = "michael@markitmike.com"
+FROM_EMAIL = "Michael Hernandez <michael@markitmike.com>"
+CLICKUP_SPACE_ID = "90136156433"
+STAGE_AGREEMENT_SENT = "4534780662"
+STAGE_SIGNED = "4534780663"
+STAGE_WON = "closedwon"
+# "true" to auto send the branded "agreement is on its way" email when SignWell sends
+SEND_AGREEMENT_EMAIL = "true"
+# "true" makes every handler log what it would do without changing anything
+DRY_RUN = "false"
