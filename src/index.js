@@ -11,6 +11,7 @@ export default {
     try {
       if (req.method === 'GET' && url.pathname === '/health') return json({ ok: true });
       if (req.method === 'POST' && url.pathname === '/signwell') return await signwell(req, env);
+      if (req.method === 'GET' && url.pathname === '/setup/signwell') return await signwellSetup(url, env);
       if (req.method === 'POST' && url.pathname === '/stripe') return await stripe(req, env);
       return json({ error: 'not found' }, 404);
     } catch (e) {
@@ -30,7 +31,12 @@ async function signwell(req, env) {
     const expect = await hmacHex(env.SIGNWELL_WEBHOOK_ID, `${type}@${evt?.event?.time}`);
     if (!safeEq(expect, evt?.event?.hash || '')) return json({ error: 'bad signature' }, 401);
   }
-  const doc = evt?.data?.object || {};
+  if (!['document_sent', 'document_completed'].includes(type)) return json({ skipped: `ignored ${type}` });
+  // Never trust the payload alone: re-read the document from SignWell with our own key.
+  const docId = evt?.data?.object?.id;
+  if (!docId) return json({ skipped: 'no document id' });
+  const doc = await signwellGet(env, `/documents/${docId}/`);
+  if (type === 'document_completed' && !/completed/i.test(doc.status || '')) return json({ skipped: `document status is ${doc.status}` });
   const owner = env.OWNER_EMAIL.toLowerCase();
   const client = (doc.recipients || []).find((r) => r.email && r.email.toLowerCase() !== owner);
   if (!client) return json({ skipped: 'no client recipient' });
@@ -58,6 +64,27 @@ async function signwell(req, env) {
     return json({ ok: 'completed handled', deal: deal.id, plan: plan.key });
   }
   return json({ skipped: `ignored ${type}` });
+}
+
+async function signwellGet(env, path, init = {}) {
+  if (!env.SIGNWELL_API_KEY) throw new Error('SIGNWELL_API_KEY missing');
+  const r = await fetch('https://www.signwell.com/api/v1' + path, {
+    ...init,
+    headers: { 'X-Api-Key': env.SIGNWELL_API_KEY, 'Content-Type': 'application/json', ...(init.headers || {}) },
+  });
+  if (!r.ok) throw new Error(`signwell ${path} ${r.status} ${await r.text()}`);
+  return r.status === 204 ? {} : r.json();
+}
+
+// One time: registers this worker's /signwell URL as a SignWell webhook (safe to run again).
+async function signwellSetup(url, env) {
+  const callback = `${url.origin}/signwell`;
+  const hooks = await signwellGet(env, '/hooks/');
+  const list = Array.isArray(hooks) ? hooks : hooks.hooks || hooks.data || [];
+  const existing = list.find((h) => h.callback_url === callback);
+  if (existing) return json({ ok: 'already registered', callback });
+  await signwellGet(env, '/hooks/', { method: 'POST', body: JSON.stringify({ callback_url: callback }) });
+  return json({ ok: 'registered', callback });
 }
 
 /* ---------------- Stripe ---------------- */

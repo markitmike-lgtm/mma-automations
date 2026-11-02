@@ -16,10 +16,10 @@ Cloudflare Workers (runs it), Resend (sends email, 3,000 a month free), HubSpot 
 ## One time setup
 1. **Cloudflare**: free account. Workers & Pages > Create > Import a repository > pick this repo. Deploy.
 2. **Secrets** (Worker > Settings > Variables and Secrets, type Secret). Never put these in the code.
-   - `HUBSPOT_TOKEN`: HubSpot > Settings > Integrations > Private Apps > Create. Scopes: contacts read and write, deals read and write, companies read, line items read. Copy the token.
-   - `STRIPE_API_KEY`: Stripe > Developers > API keys > Create restricted key. Read only on Checkout Sessions and Products.
+   - `HUBSPOT_TOKEN`: HubSpot > Development > Keys > Service Keys > Create. Scopes: contacts read and write, deals read and write, companies read, line items read. Copy the token.
+   - `STRIPE_API_KEY`: Stripe > Developers > API keys > Create restricted key. Read only on Checkout Sessions, Products and Prices.
    - `STRIPE_WEBHOOK_SECRET`: Stripe > Developers > Webhooks > Add endpoint `https://<worker>.workers.dev/stripe`, event `checkout.session.completed`. Copy the signing secret (whsec_...).
-   - `SIGNWELL_WEBHOOK_ID`: SignWell > Settings > API > Webhooks > add `https://<worker>.workers.dev/signwell`. Copy the webhook ID.
+   - `SIGNWELL_API_KEY`: SignWell > Settings > API > Create an API Key. Then open `https://<worker>.workers.dev/setup/signwell` once to register the webhook.
    - `CLICKUP_TOKEN`: ClickUp > Settings > Apps > API Token.
    - `RESEND_API_KEY`: resend.com > API Keys. First add the domain markitmike.com and its DNS records.
 3. Set `DRY_RUN` to `true` for the first test, check the Worker logs, then set it to `false`.
