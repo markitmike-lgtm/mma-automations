@@ -6,7 +6,9 @@ import { findPlan, ONBOARDING_TASKS, CLIENT_LISTS } from './plans.js';
 import { paymentEmail, welcomeEmail, agreementEmail } from './emails.js';
 
 export default {
-  async fetch(req, env, ctx) {
+  async fetch(req, rawEnv, ctx) {
+    // trim stray spaces or line breaks that can ride along when a key is pasted
+    const env = Object.fromEntries(Object.entries(rawEnv).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
     const url = new URL(req.url);
     try {
       if (req.method === 'GET' && url.pathname === '/health') return json({ ok: true });
