@@ -138,7 +138,8 @@ async function stripeGet(env, path) {
 
 /* ---------------- HubSpot ---------------- */
 async function hs(env, method, path, body) {
-  if (env.DRY_RUN === 'true' && method !== 'GET' && !path.includes('/search')) {
+  const isRead = method === 'GET' || path.includes('/search') || path.includes('/batch/read');
+  if (env.DRY_RUN === 'true' && !isRead) {
     console.log('DRY RUN', method, path, JSON.stringify(body));
     return {};
   }
