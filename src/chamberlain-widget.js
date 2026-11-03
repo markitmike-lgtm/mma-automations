@@ -83,7 +83,8 @@ function enter(){
   markSeen();
   btn.classList.add('in', 'drop');
   later(function(){ btn.classList.add('burst', 'pulse'); }, 850);
-  later(function(){ btn.classList.add('open-lbl'); }, 1150);
+  // phones keep the compact avatar so it never covers page buttons
+  if (innerWidth > 600) later(function(){ btn.classList.add('open-lbl'); }, 1150);
   later(function(){ btn.classList.add('shine'); }, 1600);
   later(function(){
     if (panel.classList.contains('open')) return;
@@ -131,7 +132,7 @@ var SUGGEST = onIntake
   : onBlog ? ['Get The Crown Blog', 'Which offer fits my brand?', 'What is a Crown Fitting?']
   : ['Which offer fits my brand?', 'What is a Crown Fitting?', 'What are Quick Wins?'];
 // "Get The Crown Blog" takes the reader straight to the signup form on the page instead of asking the AI
-function subscribeHere(){ var f = document.querySelector('.mma-blog-sub input[type=email], .wp-block-jetpack-subscriptions input[type=email]'); if (f) { toggle(false); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(function(){ f.focus(); }, 600); return true; } location.href = 'https://markitmike.com/crownblog/#subscribe'; return true; }
+function subscribeHere(){ var f = document.querySelector('.mma-blog-sub input[type=email], .wp-block-jetpack-subscriptions input[type=email]'); if (f) { toggle(false); f.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(function(){ f.focus(); }, 600); return true; } location.href = 'https://markitmike.com/crownblog/'; return true; }
 
 function render(){
   log.innerHTML = ''; add('assistant', GREETING);
