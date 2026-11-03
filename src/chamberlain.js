@@ -83,7 +83,7 @@ export async function chamberlainRoute(req, env) {
   const page = typeof body.page === 'string' ? body.page.slice(0, 200) : '';
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', ...(env.ANTHROPIC_WORKSPACE_ID ? { 'anthropic-workspace-id': env.ANTHROPIC_WORKSPACE_ID } : {}) },
     body: JSON.stringify({
       model: env.CHAMBERLAIN_MODEL || 'claude-sonnet-5-5',
       max_tokens: 600,
