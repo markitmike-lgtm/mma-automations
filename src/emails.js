@@ -82,7 +82,7 @@ export function agreementEmail({ firstName }) {
   return {
     subject: 'Your Markit Mike Agency agreement is ready to sign',
     html: shell({
-      header: 'mma-email-hdr-agreement.jpg',
+      header: 'mma-email-hdr-agreement2.jpg',
       headerAlt: "Let's make it official.",
       preheader: 'Your agreement is on its way from SignWell. About five minutes to review and sign.',
       body:
@@ -96,5 +96,41 @@ export function agreementEmail({ firstName }) {
         p('Any questions at all, reply here or call us at (714) 919&#8209;9469.') +
         p("Let's do this,"),
     }),
+  };
+}
+
+export function leadReplyEmail({ firstName }) {
+  return {
+    subject: 'We got your message',
+    html: shell({
+      header: 'mma-email-hdr-received.jpg',
+      headerAlt: "Thanks for reaching out. We're on it.",
+      preheader: 'Your message is in. Here is what happens next, plus the fastest way to get time on the calendar.',
+      body:
+        p(`Hi ${esc(firstName) || 'there'},`) +
+        p('Thank you for reaching out to Markit Mike Agency. Your message is in, and our team reads every word. You will hear back from us within 24 to 48 hours.') +
+        p('Want to skip the back and forth? Grab a time for a free Crown Fitting. It is a relaxed 20 minute conversation about your brand, your goals and what is standing in the way.') +
+        button('https://markitmike.com/crownfitting', 'Book my Crown Fitting') +
+        label('While you wait') +
+        steps([
+          ['See the work.', 'Real brands, real results: <a href="https://markitmike.com/portfolio/" style="color:#108193;font-weight:700;">View our work</a>.'],
+          ['Need a fast fix?', 'Our fixed price <a href="https://markitmike.com/quick-wins/" style="color:#108193;font-weight:700;">Quick Wins</a> are delivered in days.'],
+        ]) +
+        p('Talk soon,'),
+    }),
+  };
+}
+
+export function ownerLeadEmail({ name, email, phone, company, message, page, dealCreated }) {
+  const row = (k, v) => `<tr><td style="padding:6px 12px 6px 0;color:#5A4F6B;font-size:13px;font-weight:700;vertical-align:top;white-space:nowrap;">${k}</td><td style="padding:6px 0;font-size:15px;">${v}</td></tr>`;
+  return {
+    subject: `New website lead: ${name}${company ? ', ' + company : ''}`,
+    html: `<div style="font-family:Arial,Helvetica,sans-serif;color:#1B1030;max-width:600px;">
+<p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:2px;color:#5D0EA6;">NEW WEBSITE LEAD</p>
+<p style="margin:0 0 16px;font-size:20px;font-weight:800;">${esc(name)}${company ? ' &middot; ' + esc(company) : ''}</p>
+<table role="presentation" cellpadding="0" cellspacing="0">${row('Email', `<a href="mailto:${esc(email)}">${esc(email)}</a>`)}${row('Phone', phone ? `<a href="tel:${esc(phone.replace(/[^0-9+]/g, ''))}">${esc(phone)}</a>` : 'Not given')}${row('Page', esc(page || 'Contact'))}</table>
+<div style="margin:16px 0;padding:14px 16px;background:#F6F2FB;border-left:4px solid #E79A27;border-radius:8px;font-size:15px;line-height:23px;white-space:pre-wrap;">${esc(message) || '(no message)'}</div>
+<p style="font-size:14px;line-height:22px;">Already done for you: ${dealCreated ? 'contact and deal created in HubSpot (Prospect)' : 'contact updated in HubSpot (they already have an open deal)'}, a branded reply with the Crown Fitting link sent, and a reply task due tomorrow.</p>
+<p style="font-size:14px;line-height:22px;"><b>Your move:</b> reply personally within 24 hours. Just hit reply to this email to write to them.</p></div>`,
   };
 }

@@ -4,7 +4,7 @@
 //   GET  /health    simple check that the worker is up
 //   POST /chamberlain, GET /chamberlain.js   Chamberlain, the site assistant
 import { findPlan, ONBOARDING_TASKS, CLIENT_LISTS } from './plans.js';
-import { paymentEmail, welcomeEmail, agreementEmail } from './emails.js';
+import { paymentEmail, welcomeEmail, agreementEmail, leadReplyEmail, ownerLeadEmail } from './emails.js';
 import { chamberlainRoute } from './chamberlain.js';
 
 export default {
@@ -18,6 +18,7 @@ export default {
       if (req.method === 'GET' && url.pathname === '/setup/signwell') return await signwellSetup(url, env);
       if (req.method === 'GET' && url.pathname === '/check') return await check(env);
       if (req.method === 'POST' && url.pathname === '/stripe') return await stripe(req, env);
+      if (url.pathname === '/lead') return await lead(req, env);
       if (url.pathname.startsWith('/chamberlain')) { const r = await chamberlainRoute(req, env); if (r) return r; }
       return json({ error: 'not found' }, 404);
     } catch (e) {
@@ -242,6 +243,89 @@ async function sendAndLog(env, { to, contact, deal, subject, html }) {
     },
     associations,
   });
+}
+
+/* ---------------- Website lead form ---------------- */
+const SITE_ORIGIN = /^https:\/\/(www\.)?markitmike\.com$/;
+async function lead(req, env) {
+  const origin = req.headers.get('Origin') || '';
+  const h = SITE_ORIGIN.test(origin) ? { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', Vary: 'Origin' } : null;
+  const out = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { ...(h || {}), 'Content-Type': 'application/json' } });
+  if (req.method === 'OPTIONS') return new Response(null, { status: h ? 204 : 403, headers: h || {} });
+  if (req.method !== 'POST' || !h) return out({ error: 'forbidden' }, 403);
+
+  let f;
+  try { f = await req.json(); } catch { return out({ error: 'bad request' }, 400); }
+  const clean = (v, n) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, (c) => (c === '\n' ? '\n' : ' ')).trim().slice(0, n);
+  const name = clean(f.name, 120), email = clean(f.email, 160).toLowerCase(), company = clean(f.company, 160);
+  const phone = clean(f.phone, 40), message = clean(f.message, 5000), page = clean(f.page, 200);
+  // spam traps: hidden field filled in, or submitted faster than a person can type
+  if (f.website || (Number(f.elapsed) > 0 && Number(f.elapsed) < 2500)) return out({ ok: true });
+  if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return out({ error: 'Please add your name and a valid email.' }, 400);
+  if (await tooMany(req, 'lead', 6)) return out({ ok: true });
+
+  const [firstname, ...rest] = name.split(/\s+/);
+  const lastname = rest.join(' ');
+  let contact = await contactByEmail(env, email);
+  if (!contact) {
+    contact = await hs(env, 'POST', '/crm/v3/objects/contacts', { properties: { email, firstname, lastname, phone, company, hs_lead_status: 'NEW' } });
+  } else {
+    const upd = {};
+    if (phone) upd.phone = phone;
+    if (company && !contact.properties.company) upd.company = company;
+    if (Object.keys(upd).length) await hs(env, 'PATCH', `/crm/v3/objects/contacts/${contact.id}`, { properties: upd }).catch(() => {});
+  }
+
+  let deal = (await dealForEmail(env, email))?.deal || null;
+  const dealCreated = !deal;
+  if (!deal) {
+    deal = await hs(env, 'POST', '/crm/v3/objects/deals', {
+      properties: { dealname: `${company || name} | Website lead`, pipeline: 'default', dealstage: 'appointmentscheduled', description: message.slice(0, 1000) },
+      associations: [{ to: { id: contact.id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 3 }] }],
+    });
+  }
+  const assoc = (contactType, dealType) => [
+    { to: { id: contact.id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: contactType }] },
+    ...(deal?.id ? [{ to: { id: deal.id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: dealType }] }] : []),
+  ];
+  const tasks = [];
+  tasks.push(hs(env, 'POST', '/crm/v3/objects/notes', {
+    properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Website form</b> (${page || 'Contact'})</p><p>${message.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])).replace(/\n/g, '<br>')}</p>` },
+    associations: assoc(202, 214),
+  }));
+  tasks.push(hs(env, 'POST', '/crm/v3/objects/tasks', {
+    properties: { hs_timestamp: new Date(Date.now() + 24 * 3600e3).toISOString(), hs_task_subject: `Reply personally to website lead: ${name}`, hs_task_body: `They got the instant reply with the Crown Fitting link. Read their note, then reply within 24 hours. Phone: ${phone || 'not given'}`, hs_task_status: 'NOT_STARTED', hs_task_priority: 'HIGH', hs_task_type: 'EMAIL' },
+    associations: assoc(204, 216),
+  }));
+  tasks.push(sendAndLog(env, { to: email, contact, deal, ...leadReplyEmail({ firstName: firstname }) }));
+  const owner = ownerLeadEmail({ name, email, phone, company, message, page, dealCreated });
+  tasks.push(sendRaw(env, { to: env.OWNER_EMAIL, reply_to: email, ...owner }));
+  const results = await Promise.allSettled(tasks);
+  results.forEach((r) => r.status === 'rejected' && console.error('lead step failed', r.reason && r.reason.message));
+  return out({ ok: true });
+}
+
+async function sendRaw(env, { to, reply_to, subject, html }) {
+  if (env.DRY_RUN === 'true') { console.log('DRY RUN email', to, subject); return; }
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: env.FROM_EMAIL, to: [to], reply_to, subject, html }),
+  });
+  if (!r.ok) throw new Error(`resend ${r.status} ${await r.text()}`);
+}
+
+// best effort per visitor counter in the edge cache
+async function tooMany(req, bucket, max) {
+  try {
+    const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+    const key = new Request(`https://limit.mma/${bucket}/${encodeURIComponent(ip)}/${Math.floor(Date.now() / 3600000)}`);
+    const hit = await caches.default.match(key);
+    const n = hit ? parseInt(await hit.text(), 10) || 0 : 0;
+    if (n >= max) return true;
+    await caches.default.put(key, new Response(String(n + 1), { headers: { 'Cache-Control': 'max-age=3600' } }));
+  } catch (e) { /* never block on counter failure */ }
+  return false;
 }
 
 /* ---------------- ClickUp ---------------- */
