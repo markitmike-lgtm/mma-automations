@@ -23,8 +23,8 @@ var css = '\
 #mmc-btn.burst .mmc-burst i{animation:mmcSpark .8s ease-out forwards}\
 @keyframes mmcSpark{0%{opacity:1;transform:rotate(var(--a)) translateY(0) scale(1)}100%{opacity:0;transform:rotate(var(--a)) translateY(-46px) scale(.3)}}\
 #mmc-btn i.it,#mmc-panel h3 i{font-style:italic;font-weight:900;padding:0 .06em;background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:mmcAi 3.2s linear infinite}\
-#mmc-btn i.it{background-image:linear-gradient(110deg,#5a2a00 0%,#8a4f0e 30%,#fff3cf 48%,#8a4f0e 66%,#5a2a00 100%)}\
-#mmc-panel h3 i{background-image:linear-gradient(110deg,#E79A27 0%,#ffd27a 30%,#fffaf0 48%,#ffd27a 62%,#E79A27 100%)}\
+#mmc-btn i.it{background-image:linear-gradient(110deg,#5D0EA6 0%,#7a3f06 34%,#b8650f 44%,#fff3cf 50%,#b8650f 56%,#7a3f06 66%,#5D0EA6 100%)}\
+#mmc-panel h3 i{background-image:linear-gradient(110deg,#E79A27 0%,#E79A27 38%,#ffd27a 45%,#fffaf0 50%,#ffd27a 55%,#E79A27 62%,#E79A27 100%)}\
 @keyframes mmcAi{from{background-position:120% 0}to{background-position:-120% 0}}\
 #mmc-hello{position:fixed;right:20px;bottom:calc(var(--mmc-b,24px) + 72px);z-index:99998;max-width:250px;padding:12px 34px 12px 14px;border-radius:16px 16px 4px 16px;background:#fff;color:#1c1236;font:600 14px/1.45 Montserrat,Arial,sans-serif;box-shadow:0 18px 40px rgba(29,10,64,.25);opacity:0;transform:translateY(10px) scale(.9);transform-origin:bottom right;transition:opacity .35s,transform .45s cubic-bezier(.3,1.5,.5,1);pointer-events:none}\
 #mmc-hello.in{opacity:1;transform:none;pointer-events:auto;cursor:pointer}\
