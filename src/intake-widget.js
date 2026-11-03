@@ -42,7 +42,7 @@ textarea.mi-in{min-height:96px;resize:vertical}\
 .mi-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}\
 .mi-send{display:inline-flex;align-items:center;gap:10px;padding:18px 38px;border:0;border-radius:999px;cursor:pointer;font:800 17px Montserrat,system-ui,sans-serif;color:#2a0e52;background:linear-gradient(110deg,#ffe08a,#E79A27 55%,#c06f14);box-shadow:0 14px 30px rgba(192,111,20,.3);transition:transform .25s}\
 .mi-send:hover{transform:translateY(-2px)}.mi-send[disabled]{opacity:.6;cursor:wait}\
-.mi-foot{text-align:center}.mi-foot p{color:var(--mut);font-size:14px}\
+.mi-optin{display:flex;gap:12px;align-items:flex-start;max-width:640px;margin:0 auto 22px;padding:14px 18px;border-radius:16px;background:#fff;border:1px solid #ece5f6;font-size:14px;line-height:1.5;color:var(--mut);cursor:pointer}.mi-optin input{margin-top:3px;width:18px;height:18px;flex:none;accent-color:#5D0EA6}.mi-foot{text-align:center}.mi-foot p{color:var(--mut);font-size:14px}\
 .mi-done{text-align:center;padding:46px 34px}\
 .mi-done img{width:64px;margin:0 auto 14px;display:block}\
 .mi-done h2{display:block;font-size:30px}\
@@ -92,6 +92,7 @@ var html = hero + '<form class="mi-wrap" novalidate><input class="mi-hp" name="c
 secs.forEach(function(s, i){
   html += '<div class="mi-card"><h2><b>' + (i + 1) + '</b>' + esc(s.title) + '</h2>' + (s.note ? '<p class="mi-note">' + esc(s.note) + '</p>' : '') + '<div class="mi-grid">' + s.q.map(field).join('') + '</div></div>';
 });
+html += '<label class="mi-optin"><input type="checkbox" name="optin"><span>Yes, send me marketing tips, Crown Blog posts and offers from Markit Mike Agency. Unsubscribe anytime.</span></label>';
 html += '<div class="mi-foot"><button class="mi-send" type="submit">Send my answers &#10140;</button><p>About ' + mins + ' minutes. Required questions are marked with <span class="mi-req">*</span>. Questions? Call or text (714) 919&#8209;9469.</p></div></form>';
 root.innerHTML = html;
 var form = root.querySelector('form'), started = Date.now();
@@ -135,9 +136,10 @@ form.addEventListener('submit', function(e){
   }); });
   if (firstBad) { firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
   var btn = form.querySelector('.mi-send'); btn.disabled = true; btn.innerHTML = 'Sending...';
-  fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ offer: offer, answers: answers, website: form.company_site.value, elapsed: Date.now() - started }) })
+  fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ offer: offer, answers: answers, optIn: !!form.optin.checked, src: window.mmaSource ? window.mmaSource() : null, website: form.company_site.value, elapsed: Date.now() - started }) })
     .then(function(r){ return r.json().then(function(d){ if (!r.ok) throw new Error(d.error || 'error'); return d; }); })
     .then(function(){
+      if (window.mmaTrack) mmaTrack('intake_submit', { offer: offer });
       root.innerHTML = hero + '<div class="mi-wrap"><div class="mi-card mi-done"><img src="' + CROWN + '" alt=""><h2>You\'re all set, ' + esc(answers.first || 'friend') + '. Thank you.</h2><p>Our team is reviewing your answers now. Here\'s what happens next: ' + esc(NEXT[offer]) + '. A copy of your answers is on its way to your inbox.</p></div></div>';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     })

@@ -7,10 +7,11 @@ import { findPlan, ONBOARDING_TASKS, CLIENT_LISTS } from './plans.js';
 import { paymentEmail, welcomeEmail, agreementEmail, leadReplyEmail, ownerLeadEmail } from './emails.js';
 import { chamberlainRoute } from './chamberlain.js';
 import { intake, intakeScript, scheduled as runScheduled, alertOwner } from './ops.js';
+import { SITE_JS } from './site-script.js';
 
 const trimEnv = (rawEnv) => Object.fromEntries(Object.entries(rawEnv).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
 // shared helpers handed to ops.js
-const X = () => ({ hs, cu, contactByEmail, dealForEmail, sendAndLog, setStage, stageRank, planForDeal, tooMany });
+const X = () => ({ hs, cu, contactByEmail, dealForEmail, sendAndLog, setStage, stageRank, planForDeal, tooMany, recordOptIn });
 
 export default {
   async scheduled(event, rawEnv, ctx) {
@@ -27,6 +28,9 @@ export default {
       if (req.method === 'GET' && url.pathname === '/check') return await check(env);
       if (req.method === 'POST' && url.pathname === '/stripe') return await stripe(req, env);
       if (url.pathname === '/lead') return await lead(req, env);
+      if (req.method === 'GET' && url.pathname === '/site.js') return new Response(SITE_JS.replace('__GA4__', env.GA4_ID || '').replace('__API__', url.origin), { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
+      if (url.pathname === '/subscribe') return await subscribe(req, env);
+      if (req.method === 'GET' && url.pathname === '/setup/optin') return await setupOptIn(env);
       if (req.method === 'GET' && url.pathname === '/intake.js') return intakeScript(url);
       if (url.pathname === '/intake') return await intake(req, env, null, X());
       if (url.pathname.startsWith('/chamberlain')) { const r = await chamberlainRoute(req, env); if (r) return r; }
@@ -270,6 +274,7 @@ async function lead(req, env) {
   const clean = (v, n) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, (c) => (c === '\n' ? '\n' : ' ')).trim().slice(0, n);
   const name = clean(f.name, 120), email = clean(f.email, 160).toLowerCase(), company = clean(f.company, 160);
   const phone = clean(f.phone, 40), message = clean(f.message, 5000), page = clean(f.page, 200);
+  const optIn = f.optIn === true, src = srcText(f.src);
   // spam traps: hidden field filled in, or submitted faster than a person can type
   if (f.website || (Number(f.elapsed) > 0 && Number(f.elapsed) < 2500)) return out({ ok: true });
   if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return out({ error: 'Please add your name and a valid email.' }, 400);
@@ -301,15 +306,16 @@ async function lead(req, env) {
   ];
   const tasks = [];
   tasks.push(hs(env, 'POST', '/crm/v3/objects/notes', {
-    properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Website form</b> (${page || 'Contact'})</p><p>${message.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])).replace(/\n/g, '<br>')}</p>` },
+    properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Website form</b> (${page || 'Contact'})</p><p>Email marketing: ${optIn ? 'opted in' : 'not opted in'}<br>Source: ${src.replace(/[&<>]/g, '')}</p><p>${message.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])).replace(/\n/g, '<br>')}</p>` },
     associations: assoc(202, 214),
   }));
   tasks.push(hs(env, 'POST', '/crm/v3/objects/tasks', {
     properties: { hs_timestamp: new Date(Date.now() + 24 * 3600e3).toISOString(), hs_task_subject: `Reply personally to website lead: ${name}`, hs_task_body: `They got the instant reply with the Crown Fitting link. Read their note, then reply within 24 hours. Phone: ${phone || 'not given'}`, hs_task_status: 'NOT_STARTED', hs_task_priority: 'HIGH', hs_task_type: 'EMAIL' },
     associations: assoc(204, 216),
   }));
+  if (optIn) tasks.push(recordOptIn(env, contact.id, email, 'Contact form'));
   tasks.push(sendAndLog(env, { to: email, contact, deal, ...leadReplyEmail({ firstName: firstname }) }));
-  const owner = ownerLeadEmail({ name, email, phone, company, message, page, dealCreated });
+  const owner = ownerLeadEmail({ name, email, phone, company, message, page, dealCreated, optIn, src });
   tasks.push(sendRaw(env, { to: env.OWNER_EMAIL, reply_to: email, ...owner }));
   const results = await Promise.allSettled(tasks);
   results.forEach((r) => r.status === 'rejected' && console.error('lead step failed', r.reason && r.reason.message));
@@ -337,6 +343,75 @@ async function tooMany(req, bucket, max) {
     await caches.default.put(key, new Response(String(n + 1), { headers: { 'Cache-Control': 'max-age=3600' } }));
   } catch (e) { /* never block on counter failure */ }
   return false;
+}
+
+/* ---------------- email marketing opt ins ---------------- */
+// first touch attribution sent by site.js, as one readable line
+function srcText(src) {
+  if (!src || typeof src !== 'object') return 'unknown';
+  const u = src.utm || {};
+  const parts = [u.utm_source && `utm_source=${u.utm_source}`, u.utm_medium && `utm_medium=${u.utm_medium}`, u.utm_campaign && `utm_campaign=${u.utm_campaign}`, u.gclid && 'Google Ads click', u.fbclid && 'Meta ad click']
+    .filter(Boolean);
+  return String([parts.join(', ') || `referrer: ${src.ref || 'direct'}`, `landing page: ${src.landing || '?'}`, src.page && `converted on: ${src.page}`].filter(Boolean).join(' | ')).slice(0, 400);
+}
+
+const OPTIN_PROPS = [
+  { name: 'mma_email_opt_in', label: 'Email opt in', type: 'enumeration', fieldType: 'booleancheckbox', options: [{ label: 'Yes', value: 'true' }, { label: 'No', value: 'false' }] },
+  { name: 'mma_email_opt_in_date', label: 'Email opt in date', type: 'datetime', fieldType: 'date' },
+  { name: 'mma_email_opt_in_source', label: 'Email opt in source', type: 'string', fieldType: 'text' },
+];
+
+async function setupOptIn(env) {
+  const out = {};
+  for (const p of OPTIN_PROPS) {
+    try { await hs(env, 'GET', `/crm/v3/properties/contacts/${p.name}`); out[p.name] = 'exists'; continue; } catch { /* create it */ }
+    try { await hs(env, 'POST', '/crm/v3/properties/contacts', { ...p, groupName: 'contactinformation', description: 'Set by the markitmike.com automations when someone checks the email opt in box.' }); out[p.name] = 'created'; }
+    catch (e) { out[p.name] = 'FAIL ' + String(e.message).slice(0, 200); }
+  }
+  try {
+    const d = await hs(env, 'GET', '/communication-preferences/v3/definitions');
+    out.subscription_types = (d.subscriptionDefinitions || []).map((x) => `${x.id}: ${x.name}${x.isActive ? '' : ' (inactive)'}`);
+  } catch (e) { out.subscription_types = 'FAIL ' + String(e.message).slice(0, 200); }
+  return json(out);
+}
+
+// saves consent on the contact, and subscribes them in HubSpot when that permission is granted
+async function recordOptIn(env, contactId, email, source) {
+  const now = new Date().toISOString();
+  let saved = false;
+  try {
+    await hs(env, 'PATCH', `/crm/v3/objects/contacts/${contactId}`, { properties: { mma_email_opt_in: 'true', mma_email_opt_in_date: now.slice(0, 10), mma_email_opt_in_source: source } });
+    saved = true;
+  } catch (e) { console.error('opt in property', e.message); }
+  try {
+    const d = await hs(env, 'GET', '/communication-preferences/v3/definitions');
+    const def = (d.subscriptionDefinitions || []).find((x) => x.isActive && /marketing|newsletter/i.test(x.name)) || (d.subscriptionDefinitions || []).find((x) => x.isActive && !x.isInternal);
+    if (def) await hs(env, 'POST', '/communication-preferences/v3/subscribe', { emailAddress: email, subscriptionId: String(def.id), legalBasis: 'CONSENT_WITH_NOTICE', legalBasisExplanation: `Checked the email opt in box on markitmike.com (${source}) on ${now}.` });
+  } catch (e) { console.error('opt in subscribe', e.message); }
+  if (!saved) {
+    await hs(env, 'POST', '/crm/v3/objects/notes', {
+      properties: { hs_timestamp: now, hs_note_body: `<p><b>Email marketing opt in</b>: yes, from ${source} on ${now.slice(0, 10)}.</p>` },
+      associations: [{ to: { id: contactId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }],
+    });
+  }
+}
+
+// Crown Blog signups copied from the Jetpack form by site.js (sent with sendBeacon, so the body is plain text)
+async function subscribe(req, env) {
+  const origin = req.headers.get('Origin') || '';
+  if (req.method !== 'POST' || !SITE_ORIGIN.test(origin)) return new Response(null, { status: 403 });
+  let b; try { b = JSON.parse(await req.text()); } catch { return new Response(null, { status: 400 }); }
+  const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || await tooMany(req, 'sub', 5)) return new Response(null, { status: 204 });
+  const source = String(b.source || 'Website signup').slice(0, 80);
+  let contact = await contactByEmail(env, email);
+  if (!contact) contact = await hs(env, 'POST', '/crm/v3/objects/contacts', { properties: { email, lifecyclestage: 'subscriber' } });
+  await recordOptIn(env, contact.id, email, source);
+  await hs(env, 'POST', '/crm/v3/objects/notes', {
+    properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>${source.replace(/[&<>]/g, '')}</b></p><p>Source: ${srcText(b.src).replace(/[&<>]/g, '')}</p>` },
+    associations: [{ to: { id: contact.id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }],
+  }).catch((e) => console.error('subscribe note', e.message));
+  return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': origin } });
 }
 
 /* ---------------- ClickUp ---------------- */

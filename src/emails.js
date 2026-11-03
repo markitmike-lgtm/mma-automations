@@ -121,14 +121,14 @@ export function leadReplyEmail({ firstName }) {
   };
 }
 
-export function ownerLeadEmail({ name, email, phone, company, message, page, dealCreated }) {
+export function ownerLeadEmail({ name, email, phone, company, message, page, dealCreated, optIn, src }) {
   const row = (k, v) => `<tr><td style="padding:6px 12px 6px 0;color:#5A4F6B;font-size:13px;font-weight:700;vertical-align:top;white-space:nowrap;">${k}</td><td style="padding:6px 0;font-size:15px;">${v}</td></tr>`;
   return {
     subject: `New website lead: ${name}${company ? ', ' + company : ''}`,
     html: `<div style="font-family:Arial,Helvetica,sans-serif;color:#1B1030;max-width:600px;">
 <p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:2px;color:#5D0EA6;">NEW WEBSITE LEAD</p>
 <p style="margin:0 0 16px;font-size:20px;font-weight:800;">${esc(name)}${company ? ' &middot; ' + esc(company) : ''}</p>
-<table role="presentation" cellpadding="0" cellspacing="0">${row('Email', `<a href="mailto:${esc(email)}">${esc(email)}</a>`)}${row('Phone', phone ? `<a href="tel:${esc(phone.replace(/[^0-9+]/g, ''))}">${esc(phone)}</a>` : 'Not given')}${row('Page', esc(page || 'Contact'))}</table>
+<table role="presentation" cellpadding="0" cellspacing="0">${row('Email', `<a href="mailto:${esc(email)}">${esc(email)}</a>`)}${row('Phone', phone ? `<a href="tel:${esc(phone.replace(/[^0-9+]/g, ''))}">${esc(phone)}</a>` : 'Not given')}${row('Page', esc(page || 'Contact'))}${row('Email list', optIn ? '<b style="color:#108193;">Opted in</b>' : 'Not opted in')}${row('Came from', esc(src || 'unknown'))}</table>
 <div style="margin:16px 0;padding:14px 16px;background:#F6F2FB;border-left:4px solid #E79A27;border-radius:8px;font-size:15px;line-height:23px;white-space:pre-wrap;">${esc(message) || '(no message)'}</div>
 <p style="font-size:14px;line-height:22px;">Already done for you: ${dealCreated ? 'contact and deal created in HubSpot (Prospect)' : 'contact updated in HubSpot (they already have an open deal)'}, a branded reply with the Crown Fitting link sent, and a reply task due tomorrow.</p>
 <p style="font-size:14px;line-height:22px;"><b>Your move:</b> reply personally within 24 hours. Just hit reply to this email to write to them.</p></div>`,

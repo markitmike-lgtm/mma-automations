@@ -60,15 +60,17 @@ export async function intake(req, env, h, x) {
   if (!contact) contact = await x.hs(env, 'POST', '/crm/v3/objects/contacts', { properties: { email, ...std } });
   else await x.hs(env, 'PATCH', `/crm/v3/objects/contacts/${contact.id}`, { properties: std }).catch((err) => console.error('contact update', err.message));
   const deal = (await x.dealForEmail(env, email, true))?.deal || null;
+  const optIn = b.optIn === true;
 
   const steps = [];
   steps.push(x.hs(env, 'POST', '/crm/v3/objects/notes', {
-    properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Intake received</b> (${e(OFFER_NAMES[offer])})</p>${html}` },
+    properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Intake received</b> (${e(OFFER_NAMES[offer])})</p><p>Email marketing: ${optIn ? 'opted in' : 'not opted in'}</p>${html}` },
     associations: [
       { to: { id: contact.id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] },
       ...(deal ? [{ to: { id: deal.id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 214 }] }] : []),
     ],
   }));
+  if (optIn) steps.push(x.recordOptIn(env, contact.id, email, `Intake (${OFFER_NAMES[offer]})`));
   steps.push(x.sendAndLog(env, { to: email, contact, deal, ...intakeDoneEmail({ firstName: answers.first, offerName: OFFER_NAMES[offer], next: NEXT_LINE[offer], answersHtml: html }) }));
   steps.push(clickupReviewTask(env, x, company, OFFER_NAMES[offer], text));
   const r = await Promise.allSettled(steps);

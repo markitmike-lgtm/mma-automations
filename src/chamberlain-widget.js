@@ -22,7 +22,10 @@ var css = '\
 #mmc-btn .mmc-burst i{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:#ffd27a;box-shadow:0 0 8px #E79A27;opacity:0;pointer-events:none}\
 #mmc-btn.burst .mmc-burst i{animation:mmcSpark .8s ease-out forwards}\
 @keyframes mmcSpark{0%{opacity:1;transform:rotate(var(--a)) translateY(0) scale(1)}100%{opacity:0;transform:rotate(var(--a)) translateY(-46px) scale(.3)}}\
-#mmc-btn i.it,#mmc-panel h3 i{font-style:italic;font-weight:900}\
+#mmc-btn i.it,#mmc-panel h3 i{font-style:italic;font-weight:900;padding:0 .06em;background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:mmcAi 3.2s linear infinite}\
+#mmc-btn i.it{background-image:linear-gradient(110deg,#5a2a00 0%,#8a4f0e 30%,#fff3cf 48%,#8a4f0e 66%,#5a2a00 100%)}\
+#mmc-panel h3 i{background-image:linear-gradient(110deg,#E79A27 0%,#ffd27a 30%,#fffaf0 48%,#ffd27a 62%,#E79A27 100%)}\
+@keyframes mmcAi{from{background-position:120% 0}to{background-position:-120% 0}}\
 #mmc-hello{position:fixed;right:20px;bottom:calc(var(--mmc-b,24px) + 72px);z-index:99998;max-width:250px;padding:12px 34px 12px 14px;border-radius:16px 16px 4px 16px;background:#fff;color:#1c1236;font:600 14px/1.45 Montserrat,Arial,sans-serif;box-shadow:0 18px 40px rgba(29,10,64,.25);opacity:0;transform:translateY(10px) scale(.9);transform-origin:bottom right;transition:opacity .35s,transform .45s cubic-bezier(.3,1.5,.5,1);pointer-events:none}\
 #mmc-hello.in{opacity:1;transform:none;pointer-events:auto;cursor:pointer}\
 #mmc-hello small{display:block;margin-bottom:2px;font-size:10px;font-weight:800;letter-spacing:2px;color:#5D0EA6}\
@@ -144,7 +147,7 @@ var busy = false;
 function send(text){
   text = (text || '').trim(); if (!text || busy) return;
   busy = true; chips.innerHTML = ''; input.value = '';
-  history.push({ role: 'user', content: text }); add('user', text); save();
+  history.push({ role: 'user', content: text }); add('user', text); save(); if (window.mmaTrack) mmaTrack('chamberlain_message', { page_path: location.pathname, message_number: history.filter(function(m){ return m.role === 'user'; }).length });
   var wait = add('assistant', ''); wait.innerHTML = '<span class="mmc-dots"><span></span><span></span><span></span></span>';
   fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history, page: location.pathname }) })
     .then(function(r){ return r.json(); })
@@ -152,7 +155,7 @@ function send(text){
     .catch(function(){ wait.innerHTML = linkify('I could not connect just now. Please try again, or reach our team at info@markitmike.com.'); history.pop(); save(); })
     .then(function(){ busy = false; log.scrollTop = log.scrollHeight; input.focus(); });
 }
-function toggle(open){ panel.classList.toggle('open', open); if (open) { hello.classList.remove('in'); chime(); render(); setTimeout(function(){ input.focus(); }, 50); } }
+function toggle(open){ panel.classList.toggle('open', open); if (open) { if (window.mmaTrack) mmaTrack('chamberlain_open', { page_path: location.pathname }); hello.classList.remove('in'); chime(); render(); setTimeout(function(){ input.focus(); }, 50); } }
 btn.onclick = function(){ toggle(!panel.classList.contains('open')); };
 panel.querySelector('#mmc-x').onclick = function(){ toggle(false); };
 panel.querySelector('#mmc-form').onsubmit = function(e){ e.preventDefault(); send(input.value); };

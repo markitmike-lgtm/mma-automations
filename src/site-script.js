@@ -1,0 +1,48 @@
+// Served at /site.js on every markitmike.com page.
+//  1. Loads GA4 (when GA4_ID is set) and exposes window.mmaTrack(event, params) for our own scripts.
+//  2. Remembers where a visitor first came from (UTM tags, referrer, landing page) so every form can pass it to HubSpot.
+//  3. Copies Crown Blog (Jetpack) signups to HubSpot, without changing how Jetpack sends the newsletter.
+//  4. Tracks the clicks that matter: Crown Fitting, checkout, call, email.
+export const SITE_JS = String.raw`(function(){
+if (window.__mmaSite) return; window.__mmaSite = 1;
+var GA = '__GA4__', API = '__API__';
+window.dataLayer = window.dataLayer || [];
+window.gtag = window.gtag || function(){ dataLayer.push(arguments); };
+if (GA) {
+  var s = document.createElement('script'); s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA; document.head.appendChild(s);
+  gtag('js', new Date()); gtag('config', GA);
+}
+window.mmaTrack = function(ev, params){ try { if (GA) gtag('event', ev, params || {}); } catch (e) {} };
+
+// first touch attribution, kept for 90 days in this browser
+var KEY = 'mma-src';
+function getSrc(){ try { var v = JSON.parse(localStorage.getItem(KEY) || 'null'); if (v && Date.now() - v.t < 90 * 864e5) return v; } catch (e) {} return null; }
+(function(){
+  var q = new URLSearchParams(location.search), utm = {};
+  ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid'].forEach(function(k){ if (q.get(k)) utm[k] = q.get(k).slice(0, 120); });
+  var ext = document.referrer && document.referrer.indexOf(location.host) < 0 ? document.referrer.slice(0, 200) : '';
+  if (!getSrc() || Object.keys(utm).length) {
+    try { localStorage.setItem(KEY, JSON.stringify({ t: Date.now(), utm: utm, ref: ext || (getSrc() || {}).ref || 'direct', landing: location.pathname })); } catch (e) {}
+  }
+})();
+window.mmaSource = function(){ var v = getSrc() || {}; return { utm: v.utm || {}, ref: v.ref || 'direct', landing: v.landing || location.pathname, page: location.pathname }; };
+
+// Crown Blog signups: let Jetpack do its job, and send a copy to HubSpot
+document.addEventListener('submit', function(e){
+  var f = e.target; if (!f || !f.closest || !f.closest('.wp-block-jetpack-subscriptions, .jetpack_subscription_widget')) return;
+  var em = f.querySelector('input[type=email], input[name=email]'); if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em.value.trim())) return;
+  var body = JSON.stringify({ email: em.value.trim(), source: 'Crown Blog signup', src: window.mmaSource() });
+  try { navigator.sendBeacon ? navigator.sendBeacon(API + '/subscribe', new Blob([body], { type: 'text/plain' })) : fetch(API + '/subscribe', { method: 'POST', body: body, keepalive: true }); } catch (x) {}
+  window.mmaTrack('sign_up', { method: 'crown_blog', page_path: location.pathname });
+}, true);
+
+// clicks worth counting
+document.addEventListener('click', function(e){
+  var a = e.target.closest && e.target.closest('a[href]'); if (!a) return;
+  var h = a.getAttribute('href') || '';
+  if (/crownfitting/i.test(h)) window.mmaTrack('crown_fitting_click', { link_text: (a.innerText || '').trim().slice(0, 60), page_path: location.pathname });
+  else if (/buy\.stripe\.com/i.test(h)) { var card = a.closest('article, .qw-card, .mmt-card'); var t = card && card.querySelector('h3'); window.mmaTrack('begin_checkout', { item_name: t ? t.innerText.trim() : '', page_path: location.pathname }); }
+  else if (/^tel:/i.test(h)) window.mmaTrack('click_to_call', { page_path: location.pathname });
+  else if (/^mailto:/i.test(h)) window.mmaTrack('click_to_email', { page_path: location.pathname });
+}, true);
+})();`;
