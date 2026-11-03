@@ -361,7 +361,7 @@ async function clickupClient(env, company, plan) {
 
 /* ---------------- key check (read only, returns pass or fail per service) ---------------- */
 async function check(env) {
-  const tryIt = async (fn) => { try { await fn(); return 'ok'; } catch (e) { return 'FAIL ' + String(e.message).slice(0, 120); } };
+  const tryIt = async (fn) => { try { await fn(); return 'ok'; } catch (e) { return 'FAIL ' + String(e.message).slice(0, 500); } };
   return json({
     dry_run: env.DRY_RUN,
     hubspot: await tryIt(() => hs(env, 'GET', '/crm/v3/objects/deals?limit=1')),
@@ -376,7 +376,7 @@ async function check(env) {
         headers: { 'x-api-key': env.ANTHROPIC_API_KEY || '', 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
         body: JSON.stringify({ model: env.CHAMBERLAIN_MODEL || 'claude-sonnet-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
       });
-      if (!r.ok) throw new Error(`${r.status} ${(await r.text()).slice(0, 200)}`);
+      if (!r.ok) throw new Error(`${r.status} ${(await r.text()).slice(0, 500)}`);
     }),
     resend: await tryIt(async () => {
       const r = await fetch('https://api.resend.com/domains', { headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` } });
