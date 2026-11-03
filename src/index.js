@@ -237,7 +237,7 @@ async function sendAndLog(env, { to, contact, deal, subject, html }) {
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: env.FROM_EMAIL, to: [to], reply_to: env.OWNER_EMAIL, bcc: [env.OWNER_EMAIL], subject, html }),
+    body: JSON.stringify({ from: env.FROM_EMAIL, to: [to], reply_to: env.REPLY_TO || env.OWNER_EMAIL, bcc: [env.OWNER_EMAIL], subject, html }),
   });
   if (!r.ok) throw new Error(`resend ${r.status} ${await r.text()}`);
   const associations = [];

@@ -7,7 +7,9 @@ compatibility_date = "2026-10-01"
 # dashboard under Settings > Variables and Secrets. They are never stored in this repo.
 [vars]
 OWNER_EMAIL = "michael@markitmike.com"
-FROM_EMAIL = "Markit Mike Agency <michael@markitmike.com>"
+FROM_EMAIL = "Markit Mike Agency <team@markitmike.com>"
+# where client replies go (forwards to the owner inbox)
+REPLY_TO = "team@markitmike.com"
 CLICKUP_SPACE_ID = "90136156433"
 STAGE_AGREEMENT_SENT = "4534780662"
 STAGE_SIGNED = "4534780663"

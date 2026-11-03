@@ -9,7 +9,7 @@ export const OFFER_NAMES = {
   platinum: 'Platinum Accelerator', crownjewel: 'Crown Jewel',
 };
 
-export const ACCESS_EMAIL = 'info@markitmike.com';
+export const ACCESS_EMAIL = 'team@markitmike.com';
 
 export const SECTIONS = [
   { id: 's1', title: 'About you and your business', show: ALL, q: [
