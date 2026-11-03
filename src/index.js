@@ -275,7 +275,14 @@ async function check(env) {
     signwell: await tryIt(() => signwellGet(env, '/hooks/')),
     clickup: await tryIt(() => cu(env, 'GET', `/space/${env.CLICKUP_SPACE_ID}`)),
     // a sending only key gets 401 restricted (valid) on this read; a bad key gets 401 invalid
-    chamberlain: env.ANTHROPIC_API_KEY ? 'set' : 'MISSING',
+    chamberlain: await tryIt(async () => {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': env.ANTHROPIC_API_KEY || '', 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: env.CHAMBERLAIN_MODEL || 'claude-sonnet-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
+      });
+      if (!r.ok) throw new Error(`${r.status} ${(await r.text()).slice(0, 200)}`);
+    }),
     resend: await tryIt(async () => {
       const r = await fetch('https://api.resend.com/domains', { headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` } });
       const t = await r.text();
