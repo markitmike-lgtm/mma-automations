@@ -16,3 +16,4 @@ STAGE_WON = "closedwon"
 SEND_AGREEMENT_EMAIL = "true"
 # "true" makes every handler log what it would do without changing anything
 DRY_RUN = "false"
+CHAMBERLAIN_MODEL = "claude-sonnet-5-5"

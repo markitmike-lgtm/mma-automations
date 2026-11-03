@@ -2,8 +2,10 @@
 //   POST /signwell  SignWell webhook: document_sent, document_completed
 //   POST /stripe    Stripe webhook: checkout.session.completed
 //   GET  /health    simple check that the worker is up
+//   POST /chamberlain, GET /chamberlain.js   Chamberlain, the site assistant
 import { findPlan, ONBOARDING_TASKS, CLIENT_LISTS } from './plans.js';
 import { paymentEmail, welcomeEmail, agreementEmail } from './emails.js';
+import { chamberlainRoute } from './chamberlain.js';
 
 export default {
   async fetch(req, rawEnv, ctx) {
@@ -16,6 +18,7 @@ export default {
       if (req.method === 'GET' && url.pathname === '/setup/signwell') return await signwellSetup(url, env);
       if (req.method === 'GET' && url.pathname === '/check') return await check(env);
       if (req.method === 'POST' && url.pathname === '/stripe') return await stripe(req, env);
+      if (url.pathname.startsWith('/chamberlain')) { const r = await chamberlainRoute(req, env); if (r) return r; }
       return json({ error: 'not found' }, 404);
     } catch (e) {
       console.error('handler error', e && e.stack ? e.stack : e);
@@ -272,6 +275,7 @@ async function check(env) {
     signwell: await tryIt(() => signwellGet(env, '/hooks/')),
     clickup: await tryIt(() => cu(env, 'GET', `/space/${env.CLICKUP_SPACE_ID}`)),
     // a sending only key gets 401 restricted (valid) on this read; a bad key gets 401 invalid
+    chamberlain: env.ANTHROPIC_API_KEY ? 'set' : 'MISSING',
     resend: await tryIt(async () => {
       const r = await fetch('https://api.resend.com/domains', { headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` } });
       const t = await r.text();
