@@ -26,7 +26,7 @@ export const PLANS = [
     key: 'crownjewel',
     match: /crown jewel/i,
     name: 'Crown Jewel, Fractional CMO',
-    payLink: 'TODO_CROWN_JEWEL_LINK', // confirm the full ...ME04 link in Stripe before go live
+    payLink: 'https://buy.stripe.com/6oU00c2jH4Lq4e758weME04',
     terms: '$5,000 today, then $5,000 on the same date each month for five more months. Total $30,000, exactly as listed in your proposal and Exhibit A.',
     engagement: true,
     deliverables: [
@@ -49,7 +49,11 @@ export const PLANS = [
     payLink: 'https://buy.stripe.com/3cI6oAbUh1zedOH58weME03',
     terms: '$497, one time.',
     engagement: false,
-    deliverables: ['Gold Starter deliverables'],
+    deliverables: [
+      'Website and SEO review', 'Google Business Profile and Yelp audit', 'Reviews and sentiment analysis',
+      'Brand positioning and competitor review (up to 3)', 'New store opening strategy (if an opening is planned)',
+      'Custom 90 day plan (PDF)', 'Live 60 minute plan walkthrough, recorded', 'Send $497 Platinum credit code after walkthrough',
+    ],
   },
   {
     key: 'checkup',
@@ -58,7 +62,11 @@ export const PLANS = [
     payLink: 'https://buy.stripe.com/bJefZacYla5K5ib58weME06',
     terms: '$197, one time.',
     engagement: false,
-    deliverables: ['Brand Checkup report'],
+    deliverables: [
+      'Website review', 'Google profile and reviews review', 'Social media review (up to 2 channels)',
+      'Recorded video walkthrough', 'Brand Experience Snapshot (PDF)', 'Three opportunities plus one quick win',
+      'Send $197 upgrade credit code with delivery',
+    ],
   },
   {
     key: 'glowup',
@@ -67,7 +75,10 @@ export const PLANS = [
     payLink: 'https://buy.stripe.com/14A6oA8I5fq4eSL30oeME07',
     terms: '$297, one time.',
     engagement: false,
-    deliverables: ['Google Profile Glow Up'],
+    deliverables: [
+      'Hours, categories and services cleaned up', 'Business description written', 'Up to 15 photos selected, optimized and uploaded',
+      '5 review replies written', 'Simple review response plan',
+    ],
   },
 ];
 
