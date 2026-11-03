@@ -378,6 +378,8 @@ async function check(env) {
       });
       if (!r.ok) throw new Error(`${r.status} ${(await r.text()).slice(0, 500)}`);
     }),
+    hubspot_meetings: await tryIt(() => hs(env, 'POST', '/crm/v3/objects/meetings/search', { limit: 1 })),
+    hubspot_tasks: await tryIt(() => hs(env, 'POST', '/crm/v3/objects/tasks/search', { limit: 1 })),
     resend: await tryIt(async () => {
       const r = await fetch('https://api.resend.com/domains', { headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` } });
       const t = await r.text();
