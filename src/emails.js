@@ -14,7 +14,7 @@ function shell({ header, headerAlt, preheader, body }) {
 <tr><td style="padding:8px 36px 32px 36px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:24px;color:#1B1030;">
 <strong>Michael Hernandez</strong><br><span style="color:#5A4F6B;">Founder &amp; CEO, Markit Mike Agency&trade;</span><br>
 <a href="tel:7149199469" style="color:#108193;text-decoration:none;">(714) 919&#8209;9469</a> &middot; <a href="https://markitmike.com" style="color:#108193;text-decoration:none;">markitmike.com</a></td></tr>
-<tr><td style="background:#1D0A40;padding:18px 36px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#BFB3D6;">Markit Mike Agency&trade; &middot; Orange County, California<br>You are receiving this because you are working with Markit Mike Agency. Just reply to reach Michael directly.</td></tr>
+<tr><td style="background:#1D0A40;padding:18px 36px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#BFB3D6;">Markit Mike Agency&trade; &middot; Orange County, California<br>You are receiving this because you are working with Markit Mike Agency. Just reply to reach our team.</td></tr>
 </table></td></tr></table></body></html>`;
 }
 
@@ -58,7 +58,7 @@ export function welcomeEmail({ firstName, company, plan }) {
       ]
     : [
         ['Your intake questionnaire', 'takes about 10 minutes.'],
-        ['I get to work', 'as soon as it comes back.'],
+        ['We get to work', 'as soon as it comes back.'],
         ['Your results', 'arrive by email, usually within a few business days.'],
       ];
   return {
@@ -72,7 +72,7 @@ export function welcomeEmail({ firstName, company, plan }) {
         p(`Your payment for <strong>${esc(plan.name)}</strong> went through, and I could not be more excited to start working with ${esc(company) || 'you'}. Here is exactly what happens next.`) +
         steps(next) +
         button('https://markitmike.com/intake', 'Start your intake') +
-        card('<strong>Good to know</strong><br>Billing questions? Just reply to this email. You will always reach me directly, never a help desk.') +
+        card('<strong>Good to know</strong><br>Billing questions? Just reply to this email. You will always reach a real person on our team, never a help desk.') +
         p("Let's build something great together,"),
     }),
   };
