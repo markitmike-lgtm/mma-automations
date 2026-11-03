@@ -1,6 +1,7 @@
 // Offline test: fakes HubSpot, Stripe, Resend and ClickUp, then runs both webhooks.
 import worker from '../src/index.js';
 import { writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 import crypto from 'crypto';
 const calls = [];
 const env = { OWNER_EMAIL:'michael@markitmike.com', FROM_EMAIL:'Michael <michael@markitmike.com>', CLICKUP_SPACE_ID:'1', STAGE_AGREEMENT_SENT:'4534780662', STAGE_SIGNED:'4534780663', STAGE_WON:'closedwon', SEND_AGREEMENT_EMAIL:'true', DRY_RUN:'false', STRIPE_WEBHOOK_SECRET:'whsec_test', SIGNWELL_WEBHOOK_ID:'wh_1', HUBSPOT_TOKEN:'x', STRIPE_API_KEY:'x', CLICKUP_TOKEN:'x', RESEND_API_KEY:'x', SIGNWELL_API_KEY:'x' };
@@ -18,7 +19,7 @@ globalThis.fetch = async (u, o={}) => {
   if (u.includes('associations/tasks')) return ok({results:[{toObjectId:5}]});
   if (u.includes('tasks/batch/read')) return ok({results:[{id:'5',properties:{hs_task_subject:'Agreement not signed yet? Send a friendly nudge',hs_task_status:'NOT_STARTED'}}]});
   if (u.includes('/deals/360') && o.method==='PATCH') { stage = body.properties.dealstage; return ok({}); }
-  if (u.includes('resend.com')) { writeFileSync(`/tmp/claude-0/-home-claude/9be0b172-0c62-5b47-a803-152834d4697d/scratchpad/email-${body.subject.slice(0,12).replace(/\W/g,'')}.html`, body.html); return ok({id:'r1'}); }
+  if (u.includes('resend.com')) { writeFileSync(`${process.env.PREVIEW_DIR || tmpdir()}/email-${body.subject.slice(0,12).replace(/\W/g,'')}.html`, body.html); return ok({id:'r1'}); }
   if (u.includes('line_items?expand')) return ok({data:[{price:{product:{name:'Platinum Accelerator, 90 Day Growth Plan'}}}]});
   if (u.includes('clickup')) return ok({id:'c'+calls.length});
   return ok({results:[]});
