@@ -12,7 +12,7 @@ function shell({ header, headerAlt, preheader, body }) {
 <tr><td><img src="${IMG}${header}" width="600" alt="${esc(headerAlt)}" style="display:block;width:100%;max-width:600px;height:auto;border:0;"></td></tr>
 <tr><td style="padding:32px 36px 8px 36px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:26px;color:#1B1030;">${body}</td></tr>
 <tr><td style="padding:8px 36px 32px 36px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:24px;color:#1B1030;">
-<strong>Michael Hernandez</strong><br><span style="color:#5A4F6B;">Founder &amp; CEO, Markit Mike Agency&trade;</span><br>
+<strong>Markit Mike</strong><br><span style="color:#5A4F6B;">Markit Mike Agency&trade;</span><br>
 <a href="tel:7149199469" style="color:#108193;text-decoration:none;">(714) 919&#8209;9469</a> &middot; <a href="https://markitmike.com" style="color:#108193;text-decoration:none;">markitmike.com</a></td></tr>
 <tr><td style="background:#1D0A40;padding:18px 36px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#BFB3D6;">Markit Mike Agency&trade; &middot; Orange County, California<br>You are receiving this because you are working with Markit Mike Agency. Just reply to reach our team.</td></tr>
 </table></td></tr></table></body></html>`;
@@ -34,7 +34,7 @@ export function paymentEmail({ firstName, company, plan }) {
       preheader: `Your agreement is signed. Here is your secure payment link for ${plan.name}.`,
       body:
         p(`Hi ${esc(firstName) || 'there'},`) +
-        p(`Your agreement is signed, and I'm excited to get started with ${esc(company) || 'your team'}. The last step is your first payment, through Stripe's secure checkout.`) +
+        p(`Your agreement is signed, and our team is excited to get started with ${esc(company) || 'your team'}. The last step is your first payment, through Stripe's secure checkout.`) +
         card(`<strong>${esc(plan.name)}</strong><br>${esc(plan.terms)}`) +
         button(plan.payLink, 'Secure my spot') +
         label('What happens next') +
@@ -52,7 +52,7 @@ export function paymentEmail({ firstName, company, plan }) {
 export function welcomeEmail({ firstName, company, plan }) {
   const next = plan.engagement
     ? [
-        ['Your intake questionnaire', 'takes about 15 minutes and gives me everything I need to hit the ground running.'],
+        ['Your intake questionnaire', 'takes about 15 minutes and gives us everything we need to hit the ground running.'],
         ['Our kickoff', 'is booked as soon as your intake comes back.'],
         ['Work begins', 'the week of kickoff, with your first 30 day priorities.'],
       ]
@@ -69,7 +69,7 @@ export function welcomeEmail({ firstName, company, plan }) {
       preheader: 'Your payment went through. Here is exactly what happens next.',
       body:
         p(`Hi ${esc(firstName) || 'there'},`) +
-        p(`Your payment for <strong>${esc(plan.name)}</strong> went through, and I could not be more excited to start working with ${esc(company) || 'you'}. Here is exactly what happens next.`) +
+        p(`Your payment for <strong>${esc(plan.name)}</strong> went through, and our team could not be more excited to start working with ${esc(company) || 'you'}. Here is exactly what happens next.`) +
         steps(next) +
         button(`https://markitmike.com/intake?offer=${encodeURIComponent(plan.key)}`, 'Start your intake') +
         card('<strong>Good to know</strong><br>Billing questions? Just reply to this email. You will always reach a real person on our team, never a help desk.') +
@@ -93,7 +93,7 @@ export function agreementEmail({ firstName }) {
           ['Secure your payment.', 'Your payment link arrives right after you sign.'],
           ['Get your welcome packet.', 'Everything you need to kick things off.'],
         ]) +
-        p('Any questions at all, reply here or call me directly.') +
+        p('Any questions at all, reply here or call us at (714) 919&#8209;9469.') +
         p("Let's do this,"),
     }),
   };
