@@ -71,7 +71,7 @@ export function welcomeEmail({ firstName, company, plan }) {
         p(`Hi ${esc(firstName) || 'there'},`) +
         p(`Your payment for <strong>${esc(plan.name)}</strong> went through, and I could not be more excited to start working with ${esc(company) || 'you'}. Here is exactly what happens next.`) +
         steps(next) +
-        button('https://markitmike.com/intake', 'Start your intake') +
+        button(`https://markitmike.com/intake?offer=${encodeURIComponent(plan.key)}`, 'Start your intake') +
         card('<strong>Good to know</strong><br>Billing questions? Just reply to this email. You will always reach a real person on our team, never a help desk.') +
         p("Let's build something great together,"),
     }),
