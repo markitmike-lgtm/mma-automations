@@ -4,11 +4,11 @@ if (window.__chamberlain) return; window.__chamberlain = 1;
 var API = '__ENDPOINT__';
 var CROWN = 'https://markitmike.com/wp-content/uploads/2026/06/Crown-Icon-14Degree-Tilt.png';
 var css = '\
-#mmc-btn{position:fixed;right:20px;bottom:20px;z-index:99998;display:flex;align-items:center;gap:10px;padding:12px 20px 12px 12px;border:0;border-radius:999px;cursor:pointer;font:800 15px Montserrat,Arial,sans-serif;color:#2a0d55;background:linear-gradient(110deg,#ffe08a,#E79A27 55%,#c06f14);box-shadow:0 14px 34px rgba(29,10,64,.35);transition:transform .3s cubic-bezier(.2,.8,.2,1)}\
+#mmc-btn{position:fixed;right:20px;bottom:92px;z-index:99998;display:flex;align-items:center;gap:10px;padding:12px 20px 12px 12px;border:0;border-radius:999px;cursor:pointer;font:800 15px Montserrat,Arial,sans-serif;color:#2a0d55;background:linear-gradient(110deg,#ffe08a,#E79A27 55%,#c06f14);box-shadow:0 14px 34px rgba(29,10,64,.35);transition:transform .3s cubic-bezier(.2,.8,.2,1)}\
 #mmc-btn:hover{transform:translateY(-3px)}\
 #mmc-btn img{width:30px;height:30px;padding:4px;border-radius:50%;background:#2a0d55;box-sizing:border-box}\
 #mmc-btn i,#mmc-panel h3 i{font-style:italic;font-weight:900}\
-#mmc-panel{position:fixed;right:20px;bottom:88px;z-index:99999;width:min(380px,calc(100vw - 32px));height:min(560px,calc(100vh - 120px));display:none;flex-direction:column;overflow:hidden;border-radius:22px;background:#fff;box-shadow:0 30px 80px rgba(29,10,64,.35);font:15px/1.5 Montserrat,Arial,sans-serif;color:#1c1236}\
+#mmc-panel{position:fixed;right:20px;bottom:156px;z-index:99999;width:min(380px,calc(100vw - 32px));height:min(560px,calc(100vh - 190px));display:none;flex-direction:column;overflow:hidden;border-radius:22px;background:#fff;box-shadow:0 30px 80px rgba(29,10,64,.35);font:15px/1.5 Montserrat,Arial,sans-serif;color:#1c1236}\
 #mmc-panel.open{display:flex;animation:mmcUp .35s cubic-bezier(.2,.8,.2,1)}\
 @keyframes mmcUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}\
 #mmc-head{display:flex;align-items:center;gap:12px;padding:16px 18px;color:#fff;background:radial-gradient(80% 120% at 90% 10%,rgba(93,14,166,.9),rgba(93,14,166,0) 70%),linear-gradient(140deg,#036684,#1d0a40)}\
@@ -31,7 +31,7 @@ var css = '\
 #mmc-in:focus{border-color:#E79A27}\
 #mmc-send{padding:0 16px;border:0;border-radius:14px;cursor:pointer;font:800 14px Montserrat,Arial,sans-serif;color:#fff;background:linear-gradient(110deg,#5D0EA6,#108193)}\
 #mmc-note{padding:0 12px 10px;font-size:10px;color:#8a83a3;text-align:center}\
-@media (max-width:480px){#mmc-panel{right:16px;bottom:80px}#mmc-btn{right:16px;bottom:16px}}';
+@media (max-width:480px){#mmc-panel{right:16px;bottom:150px;height:calc(100vh - 230px)}#mmc-btn{right:16px;bottom:88px;padding:10px 16px 10px 10px;font-size:14px}}';
 var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
 var NAME = 'Chamberl<i>ai</i>n';
