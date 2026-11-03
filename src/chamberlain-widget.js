@@ -2,23 +2,23 @@
 export const WIDGET_JS = String.raw`(function(){
 if (window.__chamberlain) return; window.__chamberlain = 1;
 var API = '__ENDPOINT__';
-var CROWN = 'https://markitmike.com/wp-content/uploads/2026/06/Crown-Icon-14Degree-Tilt.png';
+var CROWN = '__AVATAR__';
 var css = '\
 #mmc-btn{position:fixed;right:20px;bottom:92px;z-index:99998;display:flex;align-items:center;gap:10px;padding:12px 20px 12px 12px;border:0;border-radius:999px;cursor:pointer;font:800 15px Montserrat,Arial,sans-serif;color:#2a0d55;background:linear-gradient(110deg,#ffe08a,#E79A27 55%,#c06f14);box-shadow:0 14px 34px rgba(29,10,64,.35);transition:transform .3s cubic-bezier(.2,.8,.2,1)}\
 #mmc-btn:hover{transform:translateY(-3px)}\
-#mmc-btn img{width:30px;height:30px;padding:4px;border-radius:50%;background:#2a0d55;box-sizing:border-box}\
+#mmc-btn img{width:36px;height:36px;border-radius:50%;box-shadow:0 0 0 2px #fff}\
 #mmc-btn i,#mmc-panel h3 i{font-style:italic;font-weight:900}\
 #mmc-panel{position:fixed;right:20px;bottom:156px;z-index:99999;width:min(380px,calc(100vw - 32px));height:min(560px,calc(100vh - 190px));display:none;flex-direction:column;overflow:hidden;border-radius:22px;background:#fff;box-shadow:0 30px 80px rgba(29,10,64,.35);font:15px/1.5 Montserrat,Arial,sans-serif;color:#1c1236}\
 #mmc-panel.open{display:flex;animation:mmcUp .35s cubic-bezier(.2,.8,.2,1)}\
 @keyframes mmcUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}\
 #mmc-head{display:flex;align-items:center;gap:12px;padding:16px 18px;color:#fff;background:radial-gradient(80% 120% at 90% 10%,rgba(93,14,166,.9),rgba(93,14,166,0) 70%),linear-gradient(140deg,#036684,#1d0a40)}\
-#mmc-head img{width:38px;height:38px;padding:6px;border-radius:50%;background:rgba(255,255,255,.12);box-sizing:border-box}\
+#mmc-head img{width:44px;height:44px;border-radius:50%;box-shadow:0 0 0 2px rgba(255,210,122,.6)}\
 #mmc-head h3{margin:0;font:800 17px Montserrat,Arial,sans-serif;color:#fff}\
 #mmc-head small{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;color:#ffd27a}\
 #mmc-x{margin-left:auto;border:0;background:none;color:#fff;font-size:24px;line-height:1;cursor:pointer;opacity:.8}\
 #mmc-log{flex:1;overflow-y:auto;padding:16px;background:#f6f3fa}\
 .mmc-m{max-width:85%;margin:0 0 10px;padding:10px 14px;border-radius:16px;white-space:pre-wrap;word-wrap:break-word}\
-.mmc-a{background:#fff;border:1px solid #ece5f6;border-bottom-left-radius:4px}\
+.mmc-a{background:#fff;border:1px solid #ece5f6;border-bottom-left-radius:4px}.mmc-row{display:flex;gap:8px;align-items:flex-end;margin:0 0 10px}.mmc-row img{flex:none;width:28px;height:28px;border-radius:50%}.mmc-row .mmc-m{margin:0}\
 .mmc-u{margin-left:auto;color:#fff;background:linear-gradient(110deg,#5D0EA6,#108193);border-bottom-right-radius:4px}\
 .mmc-m a{color:#108193;font-weight:700}.mmc-u a{color:#ffd27a}\
 .mmc-dots span{display:inline-block;width:7px;height:7px;margin-right:4px;border-radius:50%;background:#E79A27;animation:mmcB 1s infinite}\
@@ -52,7 +52,7 @@ try { history = JSON.parse(sessionStorage.getItem(KEY) || '[]') || []; } catch (
 function save(){ try { sessionStorage.setItem(KEY, JSON.stringify(history.slice(-20))); } catch (e) {} }
 function esc(s){ return s.replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function linkify(s){ return esc(s).replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1" target="_blank" rel="noopener">$1</a>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>'); }
-function add(role, text){ var d = document.createElement('div'); d.className = 'mmc-m ' + (role === 'user' ? 'mmc-u' : 'mmc-a'); d.innerHTML = linkify(text); log.appendChild(d); log.scrollTop = log.scrollHeight; return d; }
+function add(role, text){ var d = document.createElement('div'); d.className = 'mmc-m ' + (role === 'user' ? 'mmc-u' : 'mmc-a'); d.innerHTML = linkify(text); if (role === 'user') { log.appendChild(d); } else { var row = document.createElement('div'); row.className = 'mmc-row'; row.innerHTML = '<img src="' + CROWN + '" alt="">'; row.appendChild(d); log.appendChild(row); } log.scrollTop = log.scrollHeight; return d; }
 
 var onIntake = /\/intake/.test(location.pathname);
 var GREETING = onIntake

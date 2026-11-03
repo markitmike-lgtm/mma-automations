@@ -2,6 +2,7 @@
 //   POST /chamberlain     { messages: [{role, content}], page }  ->  { reply }
 //   GET  /chamberlain.js  the chat widget, embedded on markitmike.com with one script tag
 import { WIDGET_JS } from './chamberlain-widget.js';
+import { AVATAR_SVG } from './chamberlain-avatar.js';
 
 const ALLOWED_ORIGINS = [/^https:\/\/(www\.)?markitmike\.com$/, /^http:\/\/localhost(:\d+)?$/];
 const MAX_TURNS = 20;
@@ -58,7 +59,8 @@ function cors(origin) {
 export async function chamberlainRoute(req, env) {
   const url = new URL(req.url);
   if (req.method === 'GET' && url.pathname === '/chamberlain.js') {
-    return new Response(WIDGET_JS.replace('__ENDPOINT__', `${url.origin}/chamberlain`), {
+    const avatar = 'data:image/svg+xml;base64,' + btoa(AVATAR_SVG);
+    return new Response(WIDGET_JS.replace('__ENDPOINT__', `${url.origin}/chamberlain`).replace('__AVATAR__', avatar), {
       headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300' },
     });
   }
