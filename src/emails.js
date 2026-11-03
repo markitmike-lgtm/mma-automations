@@ -14,7 +14,7 @@ function shell({ header, headerAlt, preheader, body }) {
 <tr><td style="padding:8px 36px 32px 36px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:24px;color:#1B1030;">
 <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="padding:0 14px 0 0;vertical-align:middle;"><img src="https://markitmike.com/wp-content/uploads/2026/10/mm-vp-me.png" width="56" height="56" alt="Markit Mike" style="display:block;width:56px;height:56px;border-radius:50%;border:2px solid #E79A27;background:#f6efe3;object-fit:cover;"></td><td style="vertical-align:middle;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:24px;color:#1B1030;"><strong>Markit Mike</strong><br><span style="color:#5A4F6B;">Markit Mike Agency&trade;</span><br>
 <a href="tel:7149199469" style="color:#108193;text-decoration:none;">(714) 919&#8209;9469</a> &middot; <a href="https://markitmike.com" style="color:#108193;text-decoration:none;">markitmike.com</a></td></tr></table></td></tr>
-<tr><td style="background:#1D0A40;padding:18px 36px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#BFB3D6;">Markit Mike Agency&trade; &middot; Orange County, California<br>You are receiving this because you reached out to or work with Markit Mike Agency. Just reply to reach our team.</td></tr>
+<tr><td style="background:#0B3354;background-image:linear-gradient(160deg,#036684 0%,#0B3354 52%,#1D0A40 100%);border-top:4px solid #E79A27;padding:18px 36px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#BFB3D6;">Markit Mike Agency&trade; &middot; Orange County, California<br>You are receiving this because you reached out to or work with Markit Mike Agency. Just reply to reach our team.</td></tr>
 </table></td></tr></table></body></html>`;
 }
 
@@ -29,7 +29,7 @@ export function paymentEmail({ firstName, company, plan }) {
   return {
     subject: 'One last step: your secure payment link',
     html: shell({
-      header: 'mma-email-hdr-payment.jpg',
+      header: 'mma-email-hdr-payment-v2.jpg',
       headerAlt: 'Thank you. One last step.',
       preheader: `Your agreement is signed. Here is your secure payment link for ${plan.name}.`,
       body:
@@ -64,7 +64,7 @@ export function welcomeEmail({ firstName, company, plan }) {
   return {
     subject: `Welcome to Markit Mike Agency, ${firstName || 'friend'}!`,
     html: shell({
-      header: 'mma-email-hdr-welcome.jpg',
+      header: 'mma-email-hdr-welcome-v2.jpg',
       headerAlt: 'Welcome to the family.',
       preheader: 'Your payment went through. Here is exactly what happens next.',
       body:
@@ -82,7 +82,7 @@ export function agreementEmail({ firstName }) {
   return {
     subject: 'Your Markit Mike Agency agreement is ready to sign',
     html: shell({
-      header: 'mma-email-hdr-agreement2.jpg',
+      header: 'mma-email-hdr-agreement-v2.jpg',
       headerAlt: "Let's make it official.",
       preheader: 'Your agreement is on its way from SignWell. About five minutes to review and sign.',
       body:
@@ -103,7 +103,7 @@ export function leadReplyEmail({ firstName }) {
   return {
     subject: 'We got your message',
     html: shell({
-      header: 'mma-email-hdr-received.jpg',
+      header: 'mma-email-hdr-received-v2.jpg',
       headerAlt: "Thanks for reaching out. We're on it.",
       preheader: 'Your message is in. Here is what happens next, plus the fastest way to get time on the calendar.',
       body:
@@ -139,7 +139,7 @@ export function intakeDoneEmail({ firstName, offerName, next, answersHtml }) {
   return {
     subject: 'Intake received. Thank you!',
     html: shell({
-      header: 'mma-email-hdr-intakedone.jpg',
+      header: 'mma-email-hdr-intakedone-v2.jpg',
       headerAlt: 'Thank you. Your kickoff prep starts now.',
       preheader: `Your ${offerName} intake is in. A copy of your answers is inside.`,
       body:
@@ -159,7 +159,7 @@ export function intakeReminderEmail({ firstName, plan, second }) {
   return {
     subject: second ? 'Quick nudge: your intake is still waiting' : 'Your intake is waiting for you',
     html: shell({
-      header: 'mma-email-hdr-intake.jpg',
+      header: 'mma-email-hdr-intake-v2.jpg',
       headerAlt: 'Your intake is waiting for you.',
       preheader: 'A few minutes now keeps your project right on schedule.',
       body:
