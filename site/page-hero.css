@@ -1,0 +1,26 @@
+body:has(.mmh-hero){background:#f6f3fa!important}
+.mmh-hero{position:relative;overflow:hidden;box-sizing:border-box;width:100vw;margin:0 0 0 calc(50% - 50vw)!important;max-width:none!important;padding:70px 24px 110px;text-align:center;color:#fff;font-family:var(--wp--preset--font-family--montserrat),Montserrat,sans-serif;background:radial-gradient(70% 90% at 85% 40%,rgba(93,14,166,.85) 0%,rgba(93,14,166,0) 65%),linear-gradient(140deg,#036684 0%,#0b3354 42%,#1d0a40 100%)}
+.mmh-hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:linear-gradient(90deg,#FFE08A,#E79A27 55%,#C06F14)}
+.mmh-hero img{display:block;width:50px;height:auto;margin:0 auto 16px;animation:mmhF 5s ease-in-out infinite}
+@keyframes mmhF{50%{transform:translateY(-7px) rotate(5deg)}}
+.mmh-eb{display:inline-block;margin:0 0 14px;padding:7px 18px;border-radius:999px;border:1px solid rgba(255,210,122,.5);background:rgba(255,255,255,.06);font-size:12px;font-weight:800;letter-spacing:3px;color:#ffd27a}
+.mmh-hero h1{margin:0 auto!important;max-width:900px;font-family:inherit!important;font-weight:900!important;font-size:clamp(32px,4.6vw,56px)!important;line-height:1.08!important;letter-spacing:-.01em;color:#fff!important;text-transform:none!important}
+.mmh-hero p{margin:14px auto 0!important;max-width:640px;font-size:18px;line-height:1.6;color:rgba(255,255,255,.86)}
+.mmh-back{display:inline-flex;align-items:center;gap:8px;margin-top:22px;padding:11px 20px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff!important;font-size:14px;font-weight:700;text-decoration:none!important;transition:background .25s}
+.mmh-back:hover{background:rgba(255,255,255,.18)}
+.mma-read{position:relative;z-index:2;box-sizing:border-box;max-width:860px!important;margin:-64px auto 90px!important;padding:46px 52px!important;background:#fff;border:1px solid #ece5f6;border-radius:26px;box-shadow:0 30px 80px rgba(29,10,64,.14);font-family:var(--wp--preset--font-family--montserrat),Montserrat,sans-serif;font-size:17px;line-height:1.75;color:#2b2540}
+.mma-read>*{max-width:100%!important}
+.mma-read h2,.mma-read h3,.mma-read h4{margin:34px 0 10px!important;font-family:inherit!important;font-weight:800!important;line-height:1.25!important;color:#1c1236!important;text-transform:none!important}
+.mma-read h2{font-size:26px!important}.mma-read h3{font-size:21px!important}.mma-read h4{font-size:18px!important}
+.mma-read>:first-child{margin-top:0!important}
+.mma-read p{margin:0 0 16px!important}
+.mma-read a{color:#108193!important;font-weight:700}
+.mma-read ul,.mma-read ol{padding-left:22px;margin:0 0 18px!important}.mma-read li{margin-bottom:6px}
+.mma-read strong{color:#1c1236}
+.mma-read img{max-width:100%;height:auto;border-radius:16px}
+.mma-read .wp-block-image img{box-shadow:0 18px 44px rgba(29,10,64,.18)}
+.mma-read .wp-block-buttons{gap:12px}
+.mma-read .wp-block-button__link{border-radius:999px!important;padding:13px 26px!important;font-weight:800!important;background:linear-gradient(100deg,#5D0EA6,#108193)!important;color:#fff!important}
+.mma-read .wp-block-file{padding:16px 18px;border-radius:16px;background:#f6f3fa}
+@media(max-width:781px){.mmh-hero{padding:52px 18px 90px}.mma-read{margin:-50px 12px 60px!important;padding:28px 22px!important;border-radius:22px;font-size:16px}}
+@media(prefers-reduced-motion:reduce){.mmh-hero img{animation:none}}
