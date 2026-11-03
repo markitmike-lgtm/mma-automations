@@ -134,3 +134,74 @@ export function ownerLeadEmail({ name, email, phone, company, message, page, dea
 <p style="font-size:14px;line-height:22px;"><b>Your move:</b> reply personally within 24 hours. Just hit reply to this email to write to them.</p></div>`,
   };
 }
+
+export function intakeDoneEmail({ firstName, offerName, next, answersHtml }) {
+  return {
+    subject: 'Intake received. Thank you!',
+    html: shell({
+      header: 'mma-email-hdr-intakedone.jpg',
+      headerAlt: 'Thank you. Your kickoff prep starts now.',
+      preheader: `Your ${offerName} intake is in. A copy of your answers is inside.`,
+      body:
+        p(`Hi ${esc(firstName) || 'there'},`) +
+        p(`Thank you for completing your intake. Our team is reviewing your answers now, and here is what happens next: ${esc(next)}.`) +
+        p('Have a logo, brand guide, photos or reports to share? Just reply to this email and attach them. We will add them to your project folder.') +
+        label('A copy of your answers') +
+        card(answersHtml) +
+        p('Need to change something? Reply here and let us know.') +
+        p('With gratitude,'),
+    }),
+  };
+}
+
+export function intakeReminderEmail({ firstName, plan, second }) {
+  const link = `https://markitmike.com/intake?offer=${encodeURIComponent(plan.key)}`;
+  return {
+    subject: second ? 'Quick nudge: your intake is still waiting' : 'Your intake is waiting for you',
+    html: shell({
+      header: 'mma-email-hdr-intake.jpg',
+      headerAlt: 'Your intake is waiting for you.',
+      preheader: 'A few minutes now keeps your project right on schedule.',
+      body:
+        p(`Hi ${esc(firstName) || 'there'},`) +
+        p(second
+          ? `Just checking in. Your ${esc(plan.name)} intake is the one thing standing between you and getting started. It only takes a few minutes, and rough answers are perfectly fine.`
+          : `Friendly reminder: your ${esc(plan.name)} intake is ready for you. It takes just a few minutes and gives our team everything we need to get started.`) +
+        button(link, 'Finish my intake') +
+        p('Stuck on a question, or would you rather go through it together? Just reply to this email.') +
+        p('Talk soon,'),
+    }),
+  };
+}
+
+export function briefEmail({ date, sec }) {
+  const block = (title, items, empty) => `<p style="margin:22px 0 8px;font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#5D0EA6;">${title}</p>` +
+    (items && items.length ? `<ul style="margin:0;padding-left:18px;">${items.map((i) => `<li style="margin:0 0 6px;">${i}</li>`).join('')}</ul>` : `<p style="margin:0;color:#7a7392;">${empty}</p>`);
+  const count = (sec.tasks?.length || 0) + (sec.clickup?.length || 0);
+  return {
+    subject: `Daily Crown Brief: ${count ? `${count} thing${count === 1 ? '' : 's'} need you today` : 'all clear today'}`,
+    html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:23px;color:#1B1030;max-width:600px;">
+<div style="padding:22px 24px;border-radius:14px;background:linear-gradient(135deg,#1D0A40,#2B0F63 55%,#3A1180);color:#fff;">
+<p style="margin:0;font-size:12px;font-weight:800;letter-spacing:3px;color:#FFC95C;">DAILY CROWN BRIEF</p>
+<p style="margin:6px 0 0;font-size:22px;font-weight:900;">${date}</p></div>
+${block("Today's meetings", sec.meetings, 'No meetings on the calendar.')}
+${block('HubSpot tasks due', sec.tasks, 'Nothing due. Nice.')}
+${block('Client work due (ClickUp)', sec.clickup, 'Nothing due today.')}
+${sec.unpaid?.length ? block('Waiting on payment', sec.unpaid, '') : ''}
+${block('Deals gone quiet (7+ days)', sec.quiet, 'Every open deal has moved this week.')}
+${block('Open pipeline', sec.pipeline, 'No open deals.')}
+<p style="margin:26px 0 0;font-size:12px;color:#7a7392;">Sent every morning by your automations. Reply to nothing; just work the list.</p></div>`,
+  };
+}
+
+export function alertEmail({ where, detail }) {
+  return {
+    subject: `Automation alert: ${where} needs a look`,
+    html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:23px;color:#1B1030;max-width:600px;">
+<p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:2px;color:#b42318;">AUTOMATION ALERT</p>
+<p style="margin:0 0 14px;font-size:20px;font-weight:800;">${esc(where)} hit a problem</p>
+<pre style="white-space:pre-wrap;background:#F6F2FB;border-left:4px solid #E79A27;border-radius:8px;padding:12px 14px;font-size:13px;">${esc(detail).slice(0, 3000)}</pre>
+<p>Nothing is lost: webhooks from Stripe and SignWell retry on their own for days. If this keeps happening, forward this email to Claude to fix.</p>
+<p style="font-size:12px;color:#7a7392;">At most one alert per area per hour.</p></div>`,
+  };
+}

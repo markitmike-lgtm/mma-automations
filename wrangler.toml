@@ -17,3 +17,8 @@ SEND_AGREEMENT_EMAIL = "true"
 # "true" makes every handler log what it would do without changing anything
 DRY_RUN = "false"
 CHAMBERLAIN_MODEL = "claude-sonnet-5-5"
+BRIEF_CRON = "0 15 * * *"
+
+[triggers]
+# every 10 minutes: Crown Fitting bookings. 15:00 UTC (7am Pacific in winter, 8am in summer): intake reminders and the Daily Crown Brief
+crons = ["*/10 * * * *", "0 15 * * *"]

@@ -6,11 +6,19 @@
 import { findPlan, ONBOARDING_TASKS, CLIENT_LISTS } from './plans.js';
 import { paymentEmail, welcomeEmail, agreementEmail, leadReplyEmail, ownerLeadEmail } from './emails.js';
 import { chamberlainRoute } from './chamberlain.js';
+import { intake, intakeScript, scheduled as runScheduled, alertOwner } from './ops.js';
+
+const trimEnv = (rawEnv) => Object.fromEntries(Object.entries(rawEnv).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
+// shared helpers handed to ops.js
+const X = () => ({ hs, cu, contactByEmail, dealForEmail, sendAndLog, setStage, stageRank, planForDeal, tooMany });
 
 export default {
+  async scheduled(event, rawEnv, ctx) {
+    await runScheduled(event, trimEnv(rawEnv), X());
+  },
   async fetch(req, rawEnv, ctx) {
     // trim stray spaces or line breaks that can ride along when a key is pasted
-    const env = Object.fromEntries(Object.entries(rawEnv).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
+    const env = trimEnv(rawEnv);
     const url = new URL(req.url);
     try {
       if (req.method === 'GET' && url.pathname === '/health') return json({ ok: true });
@@ -19,10 +27,13 @@ export default {
       if (req.method === 'GET' && url.pathname === '/check') return await check(env);
       if (req.method === 'POST' && url.pathname === '/stripe') return await stripe(req, env);
       if (url.pathname === '/lead') return await lead(req, env);
+      if (req.method === 'GET' && url.pathname === '/intake.js') return intakeScript(url);
+      if (url.pathname === '/intake') return await intake(req, env, null, X());
       if (url.pathname.startsWith('/chamberlain')) { const r = await chamberlainRoute(req, env); if (r) return r; }
       return json({ error: 'not found' }, 404);
     } catch (e) {
       console.error('handler error', e && e.stack ? e.stack : e);
+      if (!(e && e.status && e.status < 500)) await alertOwner(env, url.pathname, String(e && e.stack ? e.stack : e));
       // 500 makes SignWell and Stripe retry later, which is what we want on a real failure
       return json({ error: String(e && e.message ? e.message : e) }, (e && e.status) || 500);
     }
