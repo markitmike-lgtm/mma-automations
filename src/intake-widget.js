@@ -5,7 +5,7 @@ var SECTIONS = __SECTIONS__, NAMES = __NAMES__, NEXT = __NEXT__, API = '__ENDPOI
 var root = document.getElementById('mma-intake'); if (!root) return;
 var css = '\
 #mma-intake{--g:#E79A27;--t:#108193;--p:#5D0EA6;--ink:#1c1236;--mut:#4a4363;font-family:Montserrat,system-ui,sans-serif;color:var(--ink)}\
-#mma-intake *{box-sizing:border-box}\
+#mma-intake{margin-top:0!important}#mma-intake *{box-sizing:border-box}\
 .mi-hero{position:relative;overflow:hidden;width:100vw;margin-left:calc(50% - 50vw);padding:72px 24px 150px;color:#fff;text-align:center;background:radial-gradient(70% 80% at 85% 60%,rgba(93,14,166,.8) 0%,rgba(93,14,166,0) 65%),linear-gradient(140deg,#036684 0%,#0b3354 40%,#1d0a40 100%)}\
 .mi-hero img{width:54px;margin:0 auto 18px;display:block;animation:miF 5s ease-in-out infinite}\
 @keyframes miF{50%{transform:translateY(-8px) rotate(4deg)}}\
@@ -24,9 +24,9 @@ var css = '\
 .mi-f fieldset{margin:0;padding:0;border:0;min-width:0}\
 .mi-req{color:var(--g);margin-left:4px}\
 .mi-help{display:block;margin:-2px 0 8px;font-size:13px;color:#7a7392;font-weight:500;letter-spacing:0;text-transform:none}\
-.mi-in{display:block;width:100%;padding:13px 15px;border:1.5px solid #e6def3;border-radius:14px;background:#faf8fd;font:500 16px Montserrat,system-ui,sans-serif;color:var(--ink);transition:border-color .2s,box-shadow .2s}\
+#mma-intake .mi-in{display:block;width:100%;margin:0;padding:13px 15px!important;border:1.5px solid #e6def3!important;border-radius:14px!important;background:#faf8fd!important;font:500 16px Montserrat,system-ui,sans-serif!important;color:var(--ink)!important;box-shadow:none;transition:border-color .2s,box-shadow .2s}\
 textarea.mi-in{min-height:96px;resize:vertical}\
-.mi-in:focus{outline:none;border-color:var(--g);background:#fff;box-shadow:0 0 0 4px rgba(231,154,39,.18)}\
+#mma-intake .mi-in:focus{outline:none;border-color:var(--g)!important;background:#fff!important;box-shadow:0 0 0 4px rgba(231,154,39,.18)}\
 .mi-opts{clear:both;display:flex;flex-wrap:wrap;gap:8px}\
 .mi-opt{position:relative}\
 .mi-opt input{position:absolute;opacity:0;pointer-events:none}\
@@ -37,8 +37,8 @@ textarea.mi-in{min-height:96px;resize:vertical}\
 .mi-acc label{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1.5px solid #e6def3;border-radius:14px;cursor:pointer;font-size:15px;line-height:1.45}\
 .mi-acc input{margin-top:3px;width:18px;height:18px;accent-color:#5D0EA6}\
 .mi-acc small{display:block;color:#7a7392;font-size:13px}\
-.mi-other{margin-top:8px}.mi-in[hidden]{display:none}\
-.mi-err{display:none;margin-top:6px;font-size:13px;font-weight:700;color:#b42318}.mi-f.bad .mi-err{display:block}.mi-f.bad .mi-in{border-color:#e5484d}\
+.mi-other{margin-top:8px}#mma-intake .mi-in[hidden]{display:none}\
+.mi-err{display:none;margin-top:6px;font-size:13px;font-weight:700;color:#b42318}.mi-f.bad .mi-err{display:block}#mma-intake .mi-f.bad .mi-in{border-color:#e5484d!important}\
 .mi-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}\
 .mi-send{display:inline-flex;align-items:center;gap:10px;padding:18px 38px;border:0;border-radius:999px;cursor:pointer;font:800 17px Montserrat,system-ui,sans-serif;color:#2a0e52;background:linear-gradient(110deg,#ffe08a,#E79A27 55%,#c06f14);box-shadow:0 14px 30px rgba(192,111,20,.3);transition:transform .25s}\
 .mi-send:hover{transform:translateY(-2px)}.mi-send[disabled]{opacity:.6;cursor:wait}\
