@@ -23,6 +23,11 @@ BRIEF_CRON = "0 15 * * *"
 GA4_ID = "G-63NZJN50KD"
 ANTHROPIC_WORKSPACE_ID = "wrkspc_01WtxQsuYkqVWccfnKkNWfzW"
 
+# Monthly Crown Reports, one JSON per client per month, keyed report:<private token>
+[[kv_namespaces]]
+binding = "REPORTS"
+id = "e622a8bbf67140699176624d6de1f935"
+
 [triggers]
 # every 10 minutes: Crown Fitting bookings. 15:00 UTC (7am Pacific in winter, 8am in summer): intake reminders and the Daily Crown Brief
 crons = ["*/10 * * * *", "0 15 * * *"]
