@@ -264,6 +264,31 @@ async function sendAndLog(env, { to, contact, deal, subject, html }) {
 
 /* ---------------- Website lead form ---------------- */
 const SITE_ORIGIN = /^https:\/\/(www\.)?markitmike\.com$/;
+// Scores a form submission for signs of automated spam. Returns { score, reasons }.
+// 3 or more = possible spam: we still save it to HubSpot, but skip the deal, task and auto reply.
+export function spamCheck({ name, email, company, message, src }) {
+  const m = ` ${String(message || '').toLowerCase().replace(/\s+/g, ' ')} `;
+  const reasons = [];
+  let score = 0;
+  const add = (pts, why) => { score += pts; reasons.push(why); };
+  if (/markit ?mike ?agency ?tm\b|agencytm|markit mike agency™ - crown/.test(m)) add(2, 'pasted our site title back');
+  const canned = [
+    'comparing a few options', 'what options would you recommend',
+    'came across your website', 'came across your site', 'stumbled upon your website', 'quick question about your website',
+  ];
+  canned.forEach((c) => { if (m.includes(c)) add(1, `canned phrase: "${c}"`); });
+  const pitch = [
+    'first page of google', 'backlink', 'guest post', 'white label seo', 'increase your traffic', 'appointment setting',
+    'our seo', 'our web design', 'our lead generation', 'our development team', 'crypto', 'bitcoin', 'casino', 'loan offer',
+  ];
+  pitch.forEach((c) => { if (new RegExp(`\\b${c}`).test(m)) add(2, `sales pitch: "${c}"`); });
+  if ((m.match(/https?:\/\//g) || []).length >= 2) add(2, 'several links in the message');
+  if (/[Ѐ-ӿ一-鿿]/.test(m)) add(2, 'unexpected script in the message');
+  if (!src || typeof src !== 'object') add(1, 'no site visit recorded before submitting');
+  if (name && !/\s/.test(String(name).trim()) && !company) add(1, 'first name only and no company');
+  return { score, reasons, spam: score >= 3 };
+}
+
 async function lead(req, env) {
   const origin = req.headers.get('Origin') || '';
   const h = SITE_ORIGIN.test(origin) ? { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', Vary: 'Origin' } : null;
@@ -284,7 +309,22 @@ async function lead(req, env) {
 
   const [firstname, ...rest] = name.split(/\s+/);
   const lastname = rest.join(' ');
+  const sc = spamCheck({ name, email, company, message, src: f.src });
   let contact = await contactByEmail(env, email);
+  if (sc.spam && !contact) {
+    // likely bot: keep a record so nothing is lost, but no deal, no task, no auto reply
+    contact = await hs(env, 'POST', '/crm/v3/objects/contacts', { properties: { email, firstname, lastname, phone, company, lifecyclestage: 'other', hs_lead_status: 'UNQUALIFIED' } }).catch(() => null);
+    const esc2 = (t) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    const steps = [];
+    if (contact) steps.push(hs(env, 'POST', '/crm/v3/objects/notes', {
+      properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Possible spam</b> (website form, ${esc2(page || 'Contact')})</p><p>Not answered automatically. Why it was flagged: ${esc2(sc.reasons.join('; '))}. If this is a real person, reply personally and change the lifecycle stage to Lead.</p><p>Source: ${esc2(src)}</p><p>${esc2(message).replace(/\n/g, '<br>')}</p>` },
+      associations: [{ to: { id: contact.id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }],
+    }));
+    const owner = ownerLeadEmail({ name, email, phone, company, message, page, dealCreated: false, optIn, src });
+    steps.push(sendRaw(env, { to: env.OWNER_EMAIL, reply_to: email, subject: `[Possible spam] ${owner.subject}`, html: `<p style="font-family:Arial,sans-serif;font-size:14px;color:#b42318;margin:0 0 14px;"><b>Flagged as possible spam, so no auto reply, deal or task was created.</b> ${esc2(sc.reasons.join('; '))}.</p>` + owner.html }));
+    (await Promise.allSettled(steps)).forEach((r) => r.status === 'rejected' && console.error('spam lead step failed', r.reason && r.reason.message));
+    return out({ ok: true });
+  }
   if (!contact) {
     contact = await hs(env, 'POST', '/crm/v3/objects/contacts', { properties: { email, firstname, lastname, phone, company, hs_lead_status: 'NEW' } });
   } else {
