@@ -109,7 +109,7 @@ export function leadReplyEmail({ firstName }) {
       body:
         p(`Hi ${esc(firstName) || 'there'},`) +
         p('Thank you for reaching out to Markit Mike Agency. Your message is in, and our team reads every word. You will hear back from us within 24 to 48 hours.') +
-        p('Want to skip the back and forth? Grab a time for a free Crown Fitting. It is a relaxed 20 minute conversation about your brand, your goals and what is standing in the way.') +
+        p('Want to skip the back and forth? Grab a time for a free Crown Fitting. It is a relaxed 30 minute conversation about your brand, your goals and what is standing in the way.') +
         button('https://markitmike.com/crownfitting', 'Book my Crown Fitting') +
         label('While you wait') +
         steps([

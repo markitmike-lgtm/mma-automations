@@ -151,8 +151,8 @@ function send(text){
   var wait = add('assistant', ''); wait.innerHTML = '<span class="mmc-dots"><span></span><span></span><span></span></span>';
   fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history, page: location.pathname }) })
     .then(function(r){ return r.json(); })
-    .then(function(d){ var t = (d && d.reply) || 'Our team is happy to help directly at info@markitmike.com.'; wait.innerHTML = linkify(t); history.push({ role: 'assistant', content: t }); save(); })
-    .catch(function(){ wait.innerHTML = linkify('I could not connect just now. Please try again, or reach our team at info@markitmike.com.'); history.pop(); save(); })
+    .then(function(d){ var t = (d && d.reply) || 'Our team is happy to help directly at team@markitmike.com.'; wait.innerHTML = linkify(t); history.push({ role: 'assistant', content: t }); save(); })
+    .catch(function(){ wait.innerHTML = linkify('I could not connect just now. Please try again, or reach our team at team@markitmike.com.'); history.pop(); save(); })
     .then(function(){ busy = false; log.scrollTop = log.scrollHeight; input.focus(); });
 }
 function toggle(open){ panel.classList.toggle('open', open); if (open) { if (window.mmaTrack) mmaTrack('chamberlain_open', { page_path: location.pathname }); hello.classList.remove('in'); chime(); render(); setTimeout(function(){ input.focus(); }, 50); } }
