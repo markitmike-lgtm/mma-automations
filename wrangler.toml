@@ -20,6 +20,7 @@ SEND_AGREEMENT_EMAIL = "true"
 DRY_RUN = "false"
 CHAMBERLAIN_MODEL = "claude-sonnet-5-5"
 BRIEF_CRON = "0 15 * * *"
+GA4_ID = "G-63NZJN50KD"
 ANTHROPIC_WORKSPACE_ID = "wrkspc_01WtxQsuYkqVWccfnKkNWfzW"
 
 [triggers]
