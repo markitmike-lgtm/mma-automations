@@ -148,7 +148,8 @@ export async function sequenceRun(env, x) {
   const active = Object.entries(state.contacts).filter(([, s]) => s.status === 'active');
 
   // 2a. replies: any incoming email since the last check from an active contact stops their sequence
-  if (active.length) {
+  let repliesOk = true;
+  if (active.length) try {
     const since = state.lastReplyCheck || Date.now() - 36e5;
     const er = await x.hs(env, 'POST', '/crm/v3/objects/emails/search', {
       filterGroups: [{ filters: [{ propertyName: 'hs_email_direction', operator: 'EQ', value: 'INCOMING_EMAIL' }, { propertyName: 'hs_createdate', operator: 'GTE', value: String(since - 5 * 60e3) }] }],
@@ -170,6 +171,11 @@ export async function sequenceRun(env, x) {
         }
       }
     }
+  } catch (err) {
+    // without reply checks we never send a follow up, so nobody who already replied gets nudged
+    repliesOk = false;
+    console.error('seq reply check', err.message);
+    if (!state.replyErrAt || Date.now() - state.replyErrAt > 24 * 36e5) { state.replyErrAt = Date.now(); await saveState(env, state); throw err; }
   }
 
   // 2b. Crown Fitting bookings by anyone in the sequence
@@ -215,6 +221,7 @@ export async function sequenceRun(env, x) {
     if (!test && (state.sent[day] || 0) >= DAILY_CAP) break;
     if (Date.now() < st.nextAt) continue;
     const step = st.step + 1;
+    if (step > 1 && !repliesOk) continue;
     if (step > 3) { await stop(env, x, cid, st, 'done', 'ATTEMPTED_TO_CONTACT', 'Cold sequence finished: 3 emails, no reply.'); dirty = true; continue; }
     const unsub = `https://mma-automations.markitmike.workers.dev/u/${st.tok}`;
     const site = `markitmike.com/portfolio/?mmc=${st.tok}`;
