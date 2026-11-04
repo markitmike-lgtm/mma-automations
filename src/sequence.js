@@ -140,7 +140,7 @@ export async function sequenceRun(env, x) {
   let newOnes = 0;
   for (const c of r.results || []) {
     if (state.contacts[c.id] || newOnes >= 3 || !c.properties.email) continue;
-    if (state.skip && state.skip[c.id]) continue;
+    if (state.skip && state.skip[c.id] && Date.now() - state.skip[c.id] < 30 * 60e3) continue; // no sequence note yet, look again in 30 minutes
     const st = await enroll(env, x, c, state);
     newOnes++;
     if (st) dirty = true; else { state.skip = state.skip || {}; state.skip[c.id] = Date.now(); dirty = true; }
