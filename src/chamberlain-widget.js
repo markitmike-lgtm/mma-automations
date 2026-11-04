@@ -63,7 +63,7 @@ btn.id = 'mmc-btn'; btn.type = 'button'; btn.setAttribute('aria-label', 'Ask Cha
 btn.innerHTML = '<span class="mmc-av"><img src="' + CROWN + '" alt=""><span class="mmc-ring"></span><span class="mmc-burst">' + [0,45,90,135,180,225,270,315].map(function(a){ return '<i style="--a:' + a + 'deg"></i>'; }).join('') + '</span></span><span class="mmc-lbl">Ask Chamberl<i class="it">ai</i>n</span>';
 var panel = document.createElement('div');
 panel.id = 'mmc-panel'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Chamberlain chat');
-panel.innerHTML = '<div id="mmc-head"><img src="' + CROWN + '" alt=""><div><small>AT YOUR SERVICE</small><h3>' + NAME + '</h3></div><button id="mmc-x" type="button" aria-label="Close">&times;</button></div>'
+panel.innerHTML = '<div id="mmc-head"><img src="' + CROWN + '" alt=""><div><small>YOUR AI ASSISTANT</small><h3>' + NAME + '</h3></div><button id="mmc-x" type="button" aria-label="Close">&times;</button></div>'
   + '<div id="mmc-log" aria-live="polite"></div><div id="mmc-chips"></div>'
   + '<form id="mmc-form"><textarea id="mmc-in" rows="1" maxlength="1500" placeholder="Ask me anything..."></textarea><button id="mmc-send" type="submit">Send</button></form>'
   + '<div id="mmc-note">AI assistant from Markit Mike Agency. Please do not share passwords or card numbers.</div>';
@@ -91,7 +91,7 @@ function enter(){
   later(function(){ btn.classList.add('shine'); }, 1600);
   later(function(){
     if (panel.classList.contains('open')) return;
-    hello.innerHTML = '<button type="button" aria-label="Dismiss">&times;</button><small>AT YOUR SERVICE</small>' + (onIntake ? 'Need a hand with your intake? I am right here.' : 'Greetings! I am Chamberlain. May I be of service?');
+    hello.innerHTML = '<button type="button" aria-label="Dismiss">&times;</button><small>CHAMBERLAIN</small>' + (onIntake ? 'Need a hand with your intake? I am right here.' : 'Welcome to Markit Mike Agency, where brands get crowned! How may I be of service?');
     hello.classList.add('in');
     hello.querySelector('button').onclick = function(e){ e.stopPropagation(); hello.classList.remove('in'); };
     hello.onclick = function(){ hello.classList.remove('in'); toggle(true); };
@@ -128,7 +128,7 @@ function add(role, text){ var d = document.createElement('div'); d.className = '
 var onIntake = /\/intake/.test(location.pathname);
 var GREETING = onIntake
   ? 'Welcome! I am Chamberlain, here to help you breeze through your intake. Stuck on a question, or not sure what we mean? Just ask.'
-  : 'Greetings! I am Chamberlain, the Markit Mike Agency assistant. Ask me about our services, which offer fits your brand, or how to book a free Crown Fitting.';
+  : 'Welcome to Markit Mike Agency, where brands get crowned! I am Chamberlain. How may I be of service? Ask me about our services, which offer fits your brand, or how to book a free Crown Fitting.';
 var onBlog = /crownblog|crown-blog|\/\d{4}\/\d{2}\//.test(location.pathname) || document.body.classList.contains('single-post');
 var SUGGEST = onIntake
   ? ['What does this question mean?', 'Can I skip a section?', 'How do I share my logins?']
