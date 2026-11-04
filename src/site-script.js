@@ -27,6 +27,13 @@ function getSrc(){ try { var v = JSON.parse(localStorage.getItem(KEY) || 'null')
 })();
 window.mmaSource = function(){ var v = getSrc() || {}; return { utm: v.utm || {}, ref: v.ref || 'direct', landing: v.landing || location.pathname, page: location.pathname }; };
 
+// a prospect from our outreach email landed here (?mmc=token): tell the worker once per visit
+(function(){ var t = new URLSearchParams(location.search).get('mmc'); if (!t) return;
+  var body = JSON.stringify({ t: t, page: location.pathname });
+  try { navigator.sendBeacon ? navigator.sendBeacon(API + '/seen', new Blob([body], { type: 'text/plain' })) : fetch(API + '/seen', { method: 'POST', body: body, keepalive: true }); } catch (x) {}
+  window.mmaTrack('outreach_click', { page_path: location.pathname });
+})();
+
 // Crown Blog signups: let Jetpack do its job, and send a copy to HubSpot
 document.addEventListener('submit', function(e){
   var f = e.target; if (!f || !f.closest || !f.closest('.wp-block-jetpack-subscriptions, .jetpack_subscription_widget')) return;

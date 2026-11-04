@@ -9,6 +9,7 @@ import { chamberlainRoute } from './chamberlain.js';
 import { intake, intakeScript, scheduled as runScheduled, alertOwner } from './ops.js';
 import { SITE_JS } from './site-script.js';
 import { reportRoute } from './report.js';
+import { unsubscribeRoute, seenRoute, sequenceSummary } from './sequence.js';
 
 const trimEnv = (rawEnv) => Object.fromEntries(Object.entries(rawEnv).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
 // shared helpers handed to ops.js
@@ -29,6 +30,9 @@ export default {
       if (req.method === 'GET' && url.pathname === '/check') return await check(env);
       if (req.method === 'POST' && url.pathname === '/stripe') return await stripe(req, env);
       if (req.method === 'GET' && url.pathname.startsWith('/report/')) { const r = await reportRoute(url, env); if (r) return r; }
+      if (req.method === 'GET' && url.pathname.startsWith('/u/')) return await unsubscribeRoute(url, env, X());
+      if (req.method === 'POST' && url.pathname === '/seen') return await seenRoute(req, env, X());
+      if (req.method === 'GET' && url.pathname === '/sequence') return json(await sequenceSummary(env));
       if (url.pathname === '/lead') return await lead(req, env);
       if (req.method === 'GET' && url.pathname === '/site.js') return new Response(SITE_JS.replace('__GA4__', env.GA4_ID || '').replace('__API__', url.origin), { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
       if (url.pathname === '/subscribe') return await subscribe(req, env);
