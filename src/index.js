@@ -324,7 +324,7 @@ async function lead(req, env) {
       properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Possible spam</b> (website form, ${esc2(page || 'Contact')})</p><p>Not answered automatically. Why it was flagged: ${esc2(sc.reasons.join('; '))}. If this is a real person, reply personally and change the lifecycle stage to Lead.</p><p>Source: ${esc2(src)}</p><p>${esc2(message).replace(/\n/g, '<br>')}</p>` },
       associations: [{ to: { id: contact.id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }],
     }));
-    const owner = ownerLeadEmail({ name, email, phone, company, message, page, dealCreated: false, optIn, src });
+    const owner = ownerLeadEmail({ name, email, phone, company, message, page, dealCreated: false, optIn, src, contactId: contact && contact.id });
     steps.push(sendRaw(env, { to: env.OWNER_EMAIL, reply_to: email, subject: `[Possible spam] ${owner.subject}`, html: `<p style="font-family:Arial,sans-serif;font-size:14px;color:#b42318;margin:0 0 14px;"><b>Flagged as possible spam, so no auto reply, deal or task was created.</b> ${esc2(sc.reasons.join('; '))}.</p>` + owner.html }));
     (await Promise.allSettled(steps)).forEach((r) => r.status === 'rejected' && console.error('spam lead step failed', r.reason && r.reason.message));
     return out({ ok: true });
@@ -361,7 +361,7 @@ async function lead(req, env) {
   }));
   if (optIn) tasks.push(recordOptIn(env, contact.id, email, 'Contact form'));
   tasks.push(sendAndLog(env, { to: email, contact, deal, ...leadReplyEmail({ firstName: firstname }) }));
-  const owner = ownerLeadEmail({ name, email, phone, company, message, page, dealCreated, optIn, src });
+  const owner = ownerLeadEmail({ name, email, phone, company, message, page, dealCreated, optIn, src, contactId: contact && contact.id, dealId: deal && deal.id });
   tasks.push(sendRaw(env, { to: env.OWNER_EMAIL, reply_to: email, ...owner }));
   const results = await Promise.allSettled(tasks);
   results.forEach((r) => r.status === 'rejected' && console.error('lead step failed', r.reason && r.reason.message));
