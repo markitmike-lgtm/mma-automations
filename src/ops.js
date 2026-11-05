@@ -1,5 +1,6 @@
 // Intake processing, scheduled jobs (meeting sync, intake reminders, Daily Crown Brief) and failure alerts.
 import { sequenceRun } from './sequence.js';
+import { ensureFittingLink, fittingFollowups, leadNudges } from './fitting.js';
 import { SECTIONS, OFFER_NAMES, NEXT_LINE, sectionsFor } from './intake-form.js';
 import { INTAKE_JS } from './intake-widget.js';
 import { intakeDoneEmail, intakeReminderEmail, briefEmail, alertEmail } from './emails.js';
@@ -126,7 +127,7 @@ export async function alertOwner(env, where, detail) {
 
 /* ---------------- scheduled jobs ---------------- */
 export async function scheduled(event, env, x) {
-  const jobs = event.cron === env.BRIEF_CRON ? [['intake reminders', intakeReminders], ['daily brief', dailyBrief], ['meeting sync', meetingSync]] : [['meeting sync', meetingSync], ['cold sequence', sequenceRun]];
+  const jobs = event.cron === env.BRIEF_CRON ? [['intake reminders', intakeReminders], ['lead nudges', leadNudges], ['daily brief', dailyBrief], ['meeting sync', meetingSync]] : [['meeting sync', meetingSync], ['cold sequence', sequenceRun], ['crown fitting follow ups', fittingFollowups]];
   for (const [name, fn] of jobs) {
     try { await fn(env, x); } catch (err) { console.error(name, err.stack || err); await alertOwner(env, name, String(err.message || err)); }
   }
@@ -147,17 +148,20 @@ async function meetingSync(env, x) {
       const email = contact.properties?.email;
       if (!email || email === env.OWNER_EMAIL) continue;
       const found = await x.dealForEmail(env, email);
+      let dealId = found?.deal?.id;
       if (found) {
         if (x.stageRank(env, found.deal.properties.dealstage) < x.stageRank(env, 'presentationscheduled')) await x.setStage(env, found.deal.id, 'presentationscheduled');
       } else {
         const p = contact.properties;
-        await x.hs(env, 'POST', '/crm/v3/objects/deals', {
+        const created = await x.hs(env, 'POST', '/crm/v3/objects/deals', {
           properties: { dealname: `${p.company || [p.firstname, p.lastname].filter(Boolean).join(' ') || email} | Crown Fitting`, pipeline: 'default', dealstage: 'presentationscheduled' },
           associations: [
             { to: { id: contact.id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 3 }] },
           ],
         });
+        dealId = created?.id;
       }
+      try { await ensureFittingLink(env, x, { dealId, contact, meeting: m }); } catch (e) { console.error('fitting link', e.message); }
     }
   }
 }

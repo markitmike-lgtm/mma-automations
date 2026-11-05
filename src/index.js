@@ -10,6 +10,7 @@ import { intake, intakeScript, scheduled as runScheduled, alertOwner } from './o
 import { SITE_JS } from './site-script.js';
 import { reportRoute } from './report.js';
 import { unsubscribeRoute, seenRoute, sequenceSummary } from './sequence.js';
+import { fittingRoute, answersToMarkdown } from './fitting.js';
 
 const trimEnv = (rawEnv) => Object.fromEntries(Object.entries(rawEnv).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
 // shared helpers handed to ops.js
@@ -33,6 +34,7 @@ export default {
       if (req.method === 'GET' && url.pathname.startsWith('/u/')) return await unsubscribeRoute(url, env, X());
       if (req.method === 'POST' && url.pathname === '/seen') return await seenRoute(req, env, X());
       if (req.method === 'GET' && url.pathname === '/sequence') return json(await sequenceSummary(env));
+      if (url.pathname.startsWith('/fitting/')) return await fittingRoute(req, env, X());
       if (url.pathname === '/lead') return await lead(req, env);
       if (req.method === 'GET' && url.pathname === '/site.js') return new Response(SITE_JS.replace('__GA4__', env.GA4_ID || '').replace('__API__', url.origin), { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
       if (url.pathname === '/subscribe') return await subscribe(req, env);
@@ -142,7 +144,12 @@ async function stripe(req, env) {
   if (deal && deal.properties.dealstage === env.STAGE_WON) return json({ skipped: 'already Client Won' });
   if (plan) {
     await sendAndLog(env, { to: email, contact, deal, ...welcomeEmail({ firstName: first, company, plan }) });
-    await clickupClient(env, company, plan);
+    const lists = await clickupClient(env, company, plan);
+    // carry the Crown Fitting notes into the client's ClickUp folder so delivery starts with full context
+    const fit = deal && env.REPORTS ? await env.REPORTS.get(`fitans:${deal.id}`, 'json') : null;
+    if (fit && lists?.Onboarding?.id) {
+      await cu(env, 'POST', `/list/${lists.Onboarding.id}/task`, { name: `Crown Fitting notes: ${company}`, markdown_description: `From the Crown Fitting on ${new Date(fit.at).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}. The full record is on the HubSpot deal.\n\n${answersToMarkdown(fit.answers)}` }).catch((e) => console.error('clickup fitting notes', e.message));
+    }
   }
   // stage last: it marks the payment as handled, so a failure above gets retried by Stripe
   if (deal) await setStage(env, deal.id, env.STAGE_WON);
@@ -482,6 +489,7 @@ async function clickupClient(env, company, plan) {
   for (const name of CLIENT_LISTS) lists[name] = await cu(env, 'POST', `/folder/${folder.id}/list`, { name });
   for (const t of plan.deliverables) await cu(env, 'POST', `/list/${lists['Deliverables'].id}/task`, { name: t, description: `${plan.name}` });
   for (const t of ONBOARDING_TASKS) await cu(env, 'POST', `/list/${lists['Onboarding'].id}/task`, { name: t });
+  return lists;
 }
 
 /* ---------------- key check (read only, returns pass or fail per service) ---------------- */

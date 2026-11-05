@@ -214,3 +214,64 @@ export function alertEmail({ where, detail }) {
 <p style="font-size:12px;color:#7a7392;">At most one alert per area per hour.</p></div>`,
   };
 }
+
+// sent the moment Markit Mike submits the Crown Fitting Notes form
+export function fittingThanksEmail({ firstName }) {
+  return {
+    subject: 'Thank you for your time today',
+    html: shell({
+      header: 'mma-email-hdr-fitthanks-v2.jpg',
+      headerAlt: 'Thank you. Your Snapshot is on its way.',
+      preheader: 'Thanks for the Crown Fitting. Here is what happens next.',
+      body:
+        p(`Hi ${esc(firstName) || 'there'},`) +
+        p('Thank you for your time today. It was great getting to know your brand, your goals and what is standing in the way.') +
+        label('What happens next') +
+        steps([
+          ['Your Brand Experience Snapshot.', 'Our team is putting together a branded one page summary of what we discussed, with your biggest opportunities and a few quick wins. Watch for it within one business day.'],
+          ['A clear recommendation.', 'Along with it, you will get the plan we recommend and exactly what is included, so you can decide with confidence.'],
+          ['Questions in the meantime?', 'Just reply to this email. It comes straight to our team.'],
+        ]) +
+        p('With gratitude,'),
+    }),
+  };
+}
+
+// sent when a Crown Fitting is marked No show
+export function noShowEmail({ firstName }) {
+  return {
+    subject: "We missed you today. Let's find a new time",
+    html: shell({
+      header: 'mma-email-hdr-noshow-v2.jpg',
+      headerAlt: "We missed you. Let's find a new time.",
+      preheader: 'Life happens. Grab a new time for your free Crown Fitting in a few clicks.',
+      body:
+        p(`Hi ${esc(firstName) || 'there'},`) +
+        p("We were sorry to miss you for your Crown Fitting today. Life happens, and there's no problem at all.") +
+        p('If you would still like to talk through your brand, your goals and where you can grow, grab a new time that works better for you. It is free and takes about 30 minutes.') +
+        button('https://markitmike.com/crownfitting', 'Pick a new time') +
+        p('If now is not the right time, just reply and let us know. We are happy to reconnect whenever it suits you.') +
+        p('Talk soon,'),
+    }),
+  };
+}
+
+// sent 3 and 7 days after a website inquiry when no Crown Fitting has been booked
+export function leadNudgeEmail({ firstName, second }) {
+  return {
+    subject: second ? 'Still happy to help' : 'Quick follow up from Markit Mike Agency',
+    html: shell({
+      header: 'mma-email-hdr-nudge-v2.jpg',
+      headerAlt: 'Still here to help. Your Crown Fitting is waiting.',
+      preheader: second ? 'One last note from our team.' : 'A free 30 minute Crown Fitting is the fastest way to get answers.',
+      body:
+        p(`Hi ${esc(firstName) || 'there'},`) +
+        (second
+          ? p("One last note so you don't miss it. If growing your brand is still on your list, a free Crown Fitting is the easiest place to start. If the timing isn't right, no worries at all, just reply and let us know.")
+          : p('Thanks again for reaching out. The fastest way to get real answers is a free Crown Fitting: a relaxed 30 minute conversation about your brand, your goals and what is standing in the way. You will leave with a few ideas you can use right away, whether or not we work together.')) +
+        button('https://markitmike.com/crownfitting', 'Book my Crown Fitting') +
+        p('Prefer email? Just reply to this one and our team will pick it up.') +
+        p('Talk soon,'),
+    }),
+  };
+}
