@@ -7,6 +7,8 @@ compatibility_date = "2026-10-01"
 # dashboard under Settings > Variables and Secrets. They are never stored in this repo.
 [vars]
 OWNER_EMAIL = "michael@markitmike.com"
+# HubSpot owner every new contact, deal and task is assigned to (Michael Hernandez)
+OWNER_ID = "95229082"
 FROM_EMAIL = "Markit Mike Agency <team@markitmike.com>"
 # where client replies go (forwards to the owner inbox)
 REPLY_TO = "team@markitmike.com"

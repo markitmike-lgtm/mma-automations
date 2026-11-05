@@ -167,6 +167,10 @@ async function stripeGet(env, path) {
 /* ---------------- HubSpot ---------------- */
 async function hs(env, method, path, body) {
   const isRead = method === 'GET' || path.includes('/search') || path.includes('/batch/read');
+  // one person team for now: every new contact, deal and task is assigned to the owner
+  if (method === 'POST' && env.OWNER_ID && /^\/crm\/v3\/objects\/(contacts|deals|tasks)$/.test(path) && body && body.properties && !body.properties.hubspot_owner_id) {
+    body = { ...body, properties: { ...body.properties, hubspot_owner_id: env.OWNER_ID } };
+  }
   if (env.DRY_RUN === 'true' && !isRead) {
     console.log('DRY RUN', method, path, JSON.stringify(body));
     return {};
