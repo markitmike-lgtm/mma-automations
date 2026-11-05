@@ -153,7 +153,7 @@ export async function sequenceRun(env, x) {
     const since = state.lastReplyCheck || Date.now() - 36e5;
     const er = await x.hs(env, 'POST', '/crm/v3/objects/emails/search', {
       filterGroups: [{ filters: [{ propertyName: 'hs_email_direction', operator: 'EQ', value: 'INCOMING_EMAIL' }, { propertyName: 'hs_createdate', operator: 'GTE', value: String(since - 5 * 60e3) }] }],
-      properties: ['hs_email_subject', 'hs_email_text'], limit: 100,
+      properties: ['hs_email_subject', 'hs_email_text', 'hs_email_from_email'], limit: 100,
     });
     state.lastReplyCheck = Date.now(); dirty = true;
     const emails = er.results || [];
@@ -164,6 +164,8 @@ export async function sequenceRun(env, x) {
           const cid = String(to.toObjectId), st = state.contacts[cid];
           if (!st || st.status !== 'active') continue;
           const em = emails.find((e) => e.id === String(row.from.id));
+          // a copy of our own email landing in a connected inbox is not a reply
+          if (/@markitmike\.com$/i.test(em?.properties?.hs_email_from_email || '')) continue;
           const said = String(em?.properties?.hs_email_text || '').trim().slice(0, 300);
           const negative = /\b(no thanks|not interested|unsubscribe|remove me|stop)\b/i.test(said);
           if (negative) await stop(env, x, cid, st, 'declined', 'UNQUALIFIED', `Cold sequence stopped: replied not interested. "${said.replace(/[<>&]/g, '')}"`);
