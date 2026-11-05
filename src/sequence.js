@@ -229,9 +229,9 @@ export async function sequenceRun(env, x) {
     const site = `markitmike.com/portfolio/?mmc=${st.tok}`;
     const e = stepEmail(step, st, unsub, site);
     try {
-      const res = await resend(env, { from: 'Markit Mike <team@markitmike.com>', to: [st.email], reply_to: env.REPLY_TO || env.OWNER_EMAIL, subject: e.subject, text: e.text, html: e.html, headers: { 'List-Unsubscribe': `<${unsub}>` } });
+      const res = await resend(env, { from: 'Michael Hernandez <michael@markitmike.com>', to: [st.email], reply_to: env.REPLY_TO || env.OWNER_EMAIL, subject: e.subject, text: e.text, html: e.html, headers: { 'List-Unsubscribe': `<${unsub}>` } });
       await x.hs(env, 'POST', '/crm/v3/objects/emails', {
-        properties: { hs_timestamp: new Date().toISOString(), hs_email_direction: 'EMAIL', hs_email_status: 'SENT', hs_email_subject: e.subject, hs_email_text: e.text, hs_email_html: e.html, hs_email_headers: JSON.stringify({ from: { email: 'team@markitmike.com' }, to: [{ email: st.email }] }) },
+        properties: { hs_timestamp: new Date().toISOString(), hs_email_direction: 'EMAIL', hs_email_status: 'SENT', hs_email_subject: e.subject, hs_email_text: e.text, hs_email_html: e.html, hs_email_headers: JSON.stringify({ from: { email: 'michael@markitmike.com', firstName: 'Michael', lastName: 'Hernandez' }, to: [{ email: st.email }] }) },
         associations: [{ to: { id: String(cid) }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 198 }] }],
       }).catch((err) => console.error('seq log', err.message));
       st.step = step; st.lastId = res.id; st.lastSentAt = Date.now(); st.lastChecked = false;
