@@ -300,7 +300,8 @@ async function save(req, env, x, ref, contact, who, ctx) {
   const deal = await x.hs(env, 'GET', `/crm/v3/objects/deals/${dealId}?properties=dealstage,dealname`).catch(() => null);
   if (deal && x.stageRank(env, deal.properties.dealstage) < x.stageRank(env, HELD)) steps.push(x.setStage(env, dealId, HELD));
   if (!already && body.thanks && cp.email) steps.push(x.sendAndLog(env, { to: cp.email, contact, deal: { id: dealId }, ...fittingThanksEmail({ firstName: cp.firstname }) }));
-  if (!already) {
+  const hasSnap = await env.REPORTS.get(`snapdeal:${dealId}`);
+  if (!already || !hasSnap) {
     const notFit = a.offer === 'Not a fit';
     const due = new Date(Date.now() + 864e5); due.setUTCHours(17, 0, 0, 0);
     const makeTask = (subject, bodyText) => x.hs(env, 'POST', '/crm/v3/objects/tasks', { properties: { hs_timestamp: due.toISOString(), hs_task_subject: subject, hs_task_body: bodyText, hs_task_status: 'NOT_STARTED', hs_task_priority: 'HIGH', hs_task_type: 'EMAIL' }, associations: assoc(204, 216) });
@@ -319,7 +320,7 @@ async function save(req, env, x, ref, contact, who, ctx) {
   }
   (await Promise.allSettled(steps)).forEach((r) => r.status === 'rejected' && console.error('fitting save', r.reason && r.reason.message));
   await env.REPORTS.put(`fitdone:${dealId}`, String(Date.now()));
-  const msg = already ? 'Your updated notes were added to the deal.' : `Notes are on the deal, it moved to Crown Fitting Held${body.thanks && cp.email ? `, ${esc(cp.firstname || 'they')} got the thank you email` : ''}, and your Brand Experience Snapshot draft will be ready in HubSpot in about a minute.`;
+  const msg = already && hasSnap ? 'Your updated notes were added to the deal.' : `Notes are on the deal, it moved to Crown Fitting Held${body.thanks && cp.email ? `, ${esc(cp.firstname || 'they')} got the thank you email` : ''}, and your Brand Experience Snapshot draft will be ready in HubSpot in about a minute.`;
   return new Response(JSON.stringify({ ok: true, message: msg, hubspot: `https://app-na2.hubspot.com/contacts/246716405/record/0-3/${dealId}` }), { headers: { 'Content-Type': 'application/json' } });
 }
 
