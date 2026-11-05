@@ -18,7 +18,7 @@ const SEND_HOURS_UTC = [14, 19]; // 9am to 2pm Eastern, 6am to 11am Pacific
 const STATE_KEY = 'seq:state';
 const HS_CONTACT = (id) => `https://app-na2.hubspot.com/contacts/246716405/record/0-1/${id}`;
 
-const isTest = (email) => /\+seqtest@gmail\.com$/i.test(email || '');
+const isTest = (email) => /\+seqtest\d*@gmail\.com$/i.test(email || '');
 const today = (d = new Date()) => d.toISOString().slice(0, 10);
 
 export function addBusinessDays(from, n) {
