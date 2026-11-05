@@ -13,12 +13,21 @@ const PROSPECT = 'appointmentscheduled';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export const FIT_SECTIONS = [
-  { t: 'The business', mins: 4, say: "Let's start with the big picture so I really understand your world.", ask: ['How many locations are you at today, and where are they?', 'Are they company owned, franchised or a mix?', 'What does growth look like for you over the next 12 months?'], f: [
+  { t: 'Why they reached out', mins: 4,
+    say: "Thanks so much for making time today, {first}. Before I tell you how I'd love to use our time, I'm curious: what prompted you to book this call?",
+    ask: ['What made now the right time to look at this?', 'What would make the next 30 minutes a win for you?'],
+    tip: 'Let them talk. Their reason for reaching out is your roadmap for the rest of the call. Then give the quick agenda, built around what they just said: "Perfect. I\'ll ask a few questions about the business and your goals, and at the end I\'ll share what I\'m seeing and a smart next step."',
+    f: [
+    ['why', 'What prompted them to reach out', 'area', 'In their words'],
+    ['whynow', 'Why now', 'text'],
+    ['callwin', 'What would make this call a win', 'text'],
+  ] },
+  { t: 'The business', mins: 3, say: "Let's start with the big picture so I really understand your world.", ask: ['How many locations are you at today, and where are they?', 'Are they company owned, franchised or a mix?', 'What does growth look like for you over the next 12 months?'], f: [
     ['locations', 'Locations today', 'text', 'Number of locations and where'],
     ['ownership', 'Ownership model', 'chips', ['Company owned', 'Franchised', 'Mixed', 'Single location']],
     ['growth', 'Growth plans, next 12 months', 'area', 'New units, new markets, remodels, new concepts'],
   ] },
-  { t: 'Goals', mins: 5, say: 'Now let\'s talk about where you want to go.', ask: ['If we were sitting here 90 days from now celebrating, what would have happened?', 'What are the top three things you want marketing to move for you?'], tip: 'Push gently for numbers: sales, traffic, new locations, loyalty members.', f: [
+  { t: 'Goals', mins: 4, say: 'Now let\'s talk about where you want to go.', ask: ['If we were sitting here 90 days from now celebrating, what would have happened?', 'What are the top three things you want marketing to move for you?'], tip: 'Push gently for numbers: sales, traffic, new locations, loyalty members.', f: [
     ['win90', 'What does a win look like in 90 days?', 'area', 'In their words'],
     ['pri1', 'Priority 1', 'text'], ['pri2', 'Priority 2', 'text'], ['pri3', 'Priority 3', 'text'],
   ] },
@@ -54,7 +63,6 @@ export const FIT_SECTIONS = [
   ] },
 ];
 
-const OPENING = { mins: 2, say: "Thanks so much for making time today, {first}. Here's how I'd love to use our 30 minutes: I'll ask about your business, your goals and what's getting in the way. At the end I'll share what I'm seeing and what a smart next step could look like. If it's a fit, great. If not, you'll still walk away with a few ideas you can use. Sound good?", tip: 'Ask if it is okay to take notes as you go. Smile, slow down, and let them talk.' };
 
 function scriptBox(sec, first) {
   const fill = (t) => esc(t).replace(/\{first\}/g, esc(first || 'there'));
@@ -63,6 +71,52 @@ function scriptBox(sec, first) {
   if (sec.ask && sec.ask.length) parts.push(`<div class="ask"><span>Ask</span><ol>${sec.ask.map((q) => `<li>${fill(q)}</li>`).join('')}</ol></div>`);
   if (sec.tip) parts.push(`<p class="tip"><span>Tip</span>${fill(sec.tip)}</p>`);
   return parts.length ? `<div class="script">${parts.join('')}</div>` : '';
+}
+
+export function friendlySource(src) {
+  const get = (k) => (src.match(new RegExp(k + '=([^,|]+)')) || [])[1]?.trim();
+  const cap = (t) => t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).replace(/Linkedin/, 'LinkedIn');
+  const parts = [];
+  const source = get('utm_source'), medium = get('utm_medium'), campaign = get('utm_campaign');
+  if (source) parts.push(`${cap(source)}${medium ? ` (${medium.replace(/_/g, ' ')})` : ''}${campaign ? `, campaign ${campaign.replace(/_/g, ' ')}` : ''}`);
+  else if (/Google Ads click/.test(src)) parts.push('A Google ad');
+  else if (/Meta ad click/.test(src)) parts.push('A Facebook or Instagram ad');
+  else { const ref = (src.match(/referrer:\s*([^|]+)/) || [])[1]?.trim(); if (ref) parts.push(ref === 'direct' ? 'Typed in your address or a saved link' : `A link on ${ref.replace(/^https?:\/\//, '').split('/')[0]}`); }
+  const landing = (src.match(/landing page:\s*([^|]+)/) || [])[1]?.trim();
+  if (landing && landing !== '?') parts.push(`first visited ${landing === '/' ? 'your home page' : landing}`);
+  const conv = (src.match(/converted on:\s*([^|]+)/) || [])[1]?.trim();
+  if (conv && conv !== landing) parts.push(`reached out from ${conv}`);
+  return parts.join(', ') || src;
+}
+
+// what we already know before the call: their website message, how they found us, outreach brand and hook
+async function contextPanel(env, x, ref, cp) {
+  const items = [];
+  try {
+    const a = await x.hs(env, 'GET', `/crm/v4/objects/contacts/${ref.contactId}/associations/notes`);
+    const ids = (a.results || []).slice(-20).map((n) => ({ id: String(n.toObjectId) }));
+    if (ids.length) {
+      const nb = await x.hs(env, 'POST', '/crm/v3/objects/notes/batch/read', { inputs: ids, properties: ['hs_note_body', 'hs_timestamp'] });
+      const plain = (h) => String(h || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').trim();
+      for (const n of (nb.results || []).sort((m, k) => String(m.properties.hs_timestamp).localeCompare(String(k.properties.hs_timestamp)))) {
+        const t = plain(n.properties.hs_note_body);
+        if (/^Website form/i.test(t)) {
+          const lines = t.split('\n').map((l) => l.trim()).filter(Boolean);
+          const src = (lines.find((l) => /^Source:/i.test(l)) || '').replace(/^Source:\s*/i, '');
+          const msg = lines.filter((l) => !/^(Website form|Email marketing:|Source:)/i.test(l)).join(' ');
+          if (msg) items.push(['They wrote on the website', msg]);
+          if (src && src !== 'unknown') items.push(['How they found us', friendlySource(src)]);
+        } else if (/^MMA SEQUENCE v1/.test(t)) {
+          const brand = (t.match(/BRAND:\s*(.+)/) || [])[1];
+          const subj = (t.match(/SUBJECT:\s*(.+)/) || [])[1];
+          items.push(['Came from our outreach', `${brand || 'Cold sequence'}${subj ? `, subject "${subj}"` : ''}`]);
+        }
+      }
+    }
+  } catch (e) { console.error('fitting context', e.message); }
+  if (cp.company) items.unshift(['Company', cp.company]);
+  if (!items.length) items.push(['Before the call', 'Nothing on file yet beyond their name and email. Look up their website and Google profile for two minutes before you start.']);
+  return `<section class="card known"><h2><b>&#9733;</b>What we already know</h2><dl>${items.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></section>`;
 }
 
 function token() {
@@ -129,6 +183,7 @@ button[disabled]{opacity:.6;cursor:wait}.saved{font-size:12px;color:var(--mut)}.
 .mins{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:1px;color:var(--mut);background:#f1ecf8;border-radius:999px;padding:4px 10px}
 body.noscript .script{display:none}
 .tog{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.35);padding:8px 14px;font-size:13px;font-weight:800;margin-top:12px}
+.known dl{margin:0;display:grid;gap:10px}.known dt{font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--t)}.known dd{margin:2px 0 0;font-size:15px;line-height:1.5}
 .done{text-align:center;padding:40px 24px}.done h2{justify-content:center;font-size:24px}
 @media (max-width:640px){.grid{grid-template-columns:1fr}.f.half{grid-column:1/-1}}
 </style></head><body>${inner}</body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
@@ -164,9 +219,9 @@ export async function fittingRoute(req, env, x) {
   if (req.method === 'POST') return save(req, env, x, ref, contact, who);
 
   const done = await env.REPORTS.get(`fitdone:${ref.dealId}`);
+  const known = await contextPanel(env, x, ref, cp);
   const mins = (m) => (m ? `<span class="mins">${m} min</span>` : '');
-  const opening = `<section class="card"><h2><b>&#9733;</b>Opening${mins(OPENING.mins)}</h2>${scriptBox(OPENING, cp.firstname)}</section>`;
-  const sections = opening + FIT_SECTIONS.map((s, i) => `<section class="card"><h2><b>${i + 1}</b>${esc(s.t)}${mins(s.mins)}</h2>${scriptBox(s, cp.firstname)}${s.note ? `<p class="note">${esc(s.note)}</p>` : ''}<div class="grid">${s.f.map(field).join('')}</div></section>`).join('');
+  const sections = known + FIT_SECTIONS.map((s, i) => `<section class="card"><h2><b>${i + 1}</b>${esc(s.t)}${mins(s.mins)}</h2>${scriptBox(s, cp.firstname)}${s.note ? `<p class="note">${esc(s.note)}</p>` : ''}<div class="grid">${s.f.map(field).join('')}</div></section>`).join('');
   const when = ref.start ? new Date(ref.start).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' PT' : '';
   return page(`Crown Fitting: ${who}`, `<div class="top"><div class="in"><div class="eb">CROWN FITTING NOTES</div><h1>${esc(who)}${cp.company ? ' · ' + esc(cp.company) : ''}</h1><p class="sub">${when ? esc(when) + '. ' : ''}${done ? '<b>Already submitted.</b> Submitting again adds a new note but does not resend the thank you email.' : 'Answers save in this browser as you type. Click Submit when the call ends.'}</p><button type="button" class="tog" id="tog">Hide script</button></div></div>
 <form id="fit" class="wrap" novalidate>${sections}</form>
