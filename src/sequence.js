@@ -61,10 +61,10 @@ export function stepEmail(step, st, unsubUrl, siteUrl) {
     body = st.body;
   } else if (step === 2) {
     subject = `Re: ${st.subject}`;
-    body = `Hi ${first},\n\nBumping this up in case it got buried. If it would help, I'm happy to walk you through two quick wins I spotted for ${brand} in a free 30 minute Crown Fitting: markitmike.com/crownfitting\n\nYou can also see some of our team's work here: ${siteUrl}\n\nMarkit Mike\nMarkit Mike Agency | (714) 919 9469`;
+    body = `Hi ${first},\n\nBumping this up in case it got buried. If it would help, I'm happy to walk you through two quick wins I spotted for ${brand} in a free 30 minute Crown Fitting: markitmike.com/crownfitting\n\nYou can also see some of our team's work here: ${siteUrl}\n\nMichael\nMarkit Mike Agency | (714) 919 9469`;
   } else {
     subject = `Re: ${st.subject}`;
-    body = `Hi ${first},\n\nI'll close the loop here so I'm not crowding your inbox. If ${brand} ever needs an extra senior hand on grand openings, loyalty or local store marketing, just reply to this email and our team will pick it right back up.\n\nWishing you a strong holiday season,\nMarkit Mike\nMarkit Mike Agency | (714) 919 9469`;
+    body = `Hi ${first},\n\nI'll close the loop here so I'm not crowding your inbox. If ${brand} ever needs an extra senior hand on grand openings, loyalty or local store marketing, just reply to this email and our team will pick it right back up.\n\nWishing you a strong holiday season,\nMichael\nMarkit Mike Agency | (714) 919 9469`;
   }
   const footer = `\n\n${ADDRESS}\nNot a fit? Reply "no thanks" or unsubscribe here: ${unsubUrl}`;
   const text = body + footer;
