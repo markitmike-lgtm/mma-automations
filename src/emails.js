@@ -275,3 +275,21 @@ export function leadNudgeEmail({ firstName, second }) {
     }),
   };
 }
+
+// the reviewed Brand Experience Snapshot, sent by Markit Mike from the review page
+export function snapshotEmail({ firstName, company, link }) {
+  return {
+    subject: `Your Brand Experience Snapshot${company ? ' for ' + company : ''}`,
+    html: shell({
+      header: 'mma-email-hdr-snapshot-v2.jpg',
+      headerAlt: 'Thank you. Your Brand Experience Snapshot is here.',
+      preheader: 'What we heard, three observations and where we go from here.',
+      body:
+        p(`Hi ${esc(firstName) || 'there'},`) +
+        p('Thank you again for your time. As promised, here is your Brand Experience Snapshot: what we heard, three observations about how your brand shows up today, and where we go from here.') +
+        button(link, 'View my Snapshot') +
+        p('The next step is a short plan walkthrough, where we go through exactly what to do first and answer every question. If you have not picked a time yet, you can grab one right from your Snapshot.') +
+        p('With gratitude,'),
+    }),
+  };
+}

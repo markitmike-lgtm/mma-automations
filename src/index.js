@@ -11,10 +11,11 @@ import { SITE_JS } from './site-script.js';
 import { reportRoute } from './report.js';
 import { unsubscribeRoute, seenRoute, sequenceSummary } from './sequence.js';
 import { fittingRoute, answersToMarkdown } from './fitting.js';
+import { snapshotReview, snapshotClient } from './snapshot.js';
 
 const trimEnv = (rawEnv) => Object.fromEntries(Object.entries(rawEnv).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
 // shared helpers handed to ops.js
-const X = () => ({ hs, cu, contactByEmail, dealForEmail, sendAndLog, setStage, stageRank, planForDeal, tooMany, recordOptIn });
+const X = () => ({ hs, cu, contactByEmail, dealForEmail, sendAndLog, sendRaw, setStage, stageRank, planForDeal, tooMany, recordOptIn });
 
 export default {
   async scheduled(event, rawEnv, ctx) {
@@ -34,7 +35,9 @@ export default {
       if (req.method === 'GET' && url.pathname.startsWith('/u/')) return await unsubscribeRoute(url, env, X());
       if (req.method === 'POST' && url.pathname === '/seen') return await seenRoute(req, env, X());
       if (req.method === 'GET' && url.pathname === '/sequence') return json(await sequenceSummary(env));
-      if (url.pathname.startsWith('/fitting/')) return await fittingRoute(req, env, X());
+      if (url.pathname.startsWith('/fitting/')) return await fittingRoute(req, env, X(), ctx);
+      if (url.pathname.startsWith('/snapshot/')) return await snapshotReview(req, env, X());
+      if (req.method === 'GET' && url.pathname.startsWith('/s/')) return await snapshotClient(req, env, X());
       if (url.pathname === '/lead') return await lead(req, env);
       if (req.method === 'GET' && url.pathname === '/site.js') return new Response(SITE_JS.replace('__GA4__', env.GA4_ID || '').replace('__API__', url.origin), { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
       if (url.pathname === '/subscribe') return await subscribe(req, env);

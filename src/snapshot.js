@@ -1,0 +1,228 @@
+// Brand Experience Snapshot, drafted automatically the moment Crown Fitting Notes are submitted.
+//   draft:   AI writes the content from the notes (nothing invented), saved to KV
+//   review:  GET /snapshot/<tok>  private page for Markit Mike: edit any text in place, Save, Approve and send
+//   client:  GET /s/<pub>         the prospect's view (printable); first open alerts the owner
+import { snapshotEmail } from './emails.js';
+import { FIT_SECTIONS } from './fitting.js';
+
+const WORKER = 'https://mma-automations.markitmike.workers.dev';
+const LOGO = 'https://markitmike.com/wp-content/uploads/2026/11/mma-logo-reverse-tight.png';
+const AVATAR = 'https://markitmike.com/wp-content/uploads/2026/10/mm-vp-me.png';
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SCORES = [['s_brand', 'Brand'], ['s_digital', 'Digital presence'], ['s_loyalty', 'Loyalty and retention'], ['s_lsm', 'Local store marketing'], ['s_reviews', 'Reviews and reputation']];
+
+function token(n = 14) {
+  const a = new Uint8Array(n); crypto.getRandomValues(a);
+  return [...a].map((b) => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join('');
+}
+
+const SYSTEM = `You write the Brand Experience Snapshot for Markit Mike Agency: a warm, sharp, one glance summary sent to a prospect the day after their free Crown Fitting call. You are given the call notes. Write ONLY from those notes. Never invent numbers, names, dates, ratings, tools or facts. If something is not in the notes, leave it out.
+
+Voice: confident, warm, plain English, short sentences, speaking to the prospect as "you" and as "our team" (never "I", never the name Michael). No dashes of any kind (no hyphens, en dashes or em dashes); use commas or periods. If the business is a restaurant, capitalize Guest and Guests.
+
+Return ONLY a JSON object with exactly these keys:
+{
+ "quote": "their single most telling line from the notes, lightly cleaned up, in their words (no quote marks)",
+ "quote_label": "what the quote is, for example Your 90 day goal, in your words",
+ "where": ["2 or 3 short statements about where things stand today"],
+ "observations": [{"title": "3 to 5 word title", "saw": "what we saw, one sentence", "why": "why it matters, one sentence", "quick_win": "one concrete action they can take this week, or empty string"}],
+ "summary": "one bold sentence that ties their goal to the biggest gap",
+ "summary_more": "one supporting sentence",
+ "help": [{"title": "what they want help with, short", "quote": "their words if the notes have them, else empty string"}],
+ "dates": [{"when": "short label like Mar", "what": "the moment they mentioned"}],
+ "attendees": [{"name": "name or role", "role": "why they should join"}],
+ "recommendation": {"offer": "the recommended offer from the notes, or empty", "why": "one or two sentences on why it fits"},
+ "next": "one sentence on the next step: the plan walkthrough"
+}
+Exactly 3 observations. Up to 3 help items. dates and attendees may be empty arrays if the notes have none. Only one observation may have a quick_win; the others use empty string.`;
+
+function notesText(a) {
+  const out = [];
+  for (const s of FIT_SECTIONS) for (const [k, lab] of s.f) {
+    const v = a[k];
+    if (v == null || v === '' || (Array.isArray(v) && !v.length)) continue;
+    out.push(`${lab}: ${Array.isArray(v) ? v.join(', ') : v}`);
+  }
+  return out.join('\n');
+}
+
+function fallback(a) {
+  const pick = (...k) => k.map((x) => a[x]).find(Boolean) || '';
+  return {
+    quote: pick('win90', 'why', 'pain'), quote_label: a.win90 ? 'Your 90 day goal, in your words' : 'Why you reached out, in your words',
+    where: [a.who && `Marketing today: ${[].concat(a.who).join(', ')}.`, a.working && `Working: ${a.working}`, a.notworking && `Not working yet: ${a.notworking}`].filter(Boolean).slice(0, 3),
+    observations: [
+      { title: 'Your biggest priority', saw: pick('pri1', 'pain'), why: 'This is where focus will pay off first.', quick_win: '' },
+      { title: 'What is holding you back', saw: pick('pain', 'notworking'), why: 'Solving it unlocks the rest of the plan.', quick_win: '' },
+      { title: 'Customer experience', saw: pick('webnotes', 'loyalty'), why: 'First impressions online and in store drive repeat visits.', quick_win: '' },
+    ],
+    summary: 'You have a clear goal and a few fixable gaps standing in the way.', summary_more: 'Your plan walkthrough will show exactly what to do first.',
+    help: [a.pri1, a.pri2, a.pri3].filter(Boolean).map((t) => ({ title: t, quote: '' })),
+    dates: [], attendees: a.decider ? [{ name: a.decider, role: 'weighs in on decisions' }] : [],
+    recommendation: { offer: a.offer && a.offer !== 'Not a fit' ? a.offer : '', why: a.next || '' }, next: 'Next, we walk through your plan together and answer every question.',
+  };
+}
+
+async function draftContent(env, answers, company) {
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', ...(env.ANTHROPIC_WORKSPACE_ID ? { 'anthropic-workspace-id': env.ANTHROPIC_WORKSPACE_ID } : {}) },
+      body: JSON.stringify({ model: env.CHAMBERLAIN_MODEL || 'claude-sonnet-5-5', max_tokens: 2000, system: SYSTEM, messages: [{ role: 'user', content: `Business: ${company}\n\nCrown Fitting notes:\n${notesText(answers)}` }] }),
+    });
+    if (!r.ok) throw new Error(`anthropic ${r.status} ${(await r.text()).slice(0, 200)}`);
+    const j = await r.json();
+    const text = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('');
+    const data = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+    if (!Array.isArray(data.observations) || !data.quote) throw new Error('incomplete draft');
+    // belt and braces on the house style
+    const clean = (v) => (typeof v === 'string' ? v.replace(/\s*[–—]\s*/g, ', ').replace(/(\w)-(\w)/g, '$1 $2') : Array.isArray(v) ? v.map(clean) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clean(x)])) : v);
+    return { data: clean(data), ai: true };
+  } catch (e) {
+    console.error('snapshot draft', e.message);
+    return { data: fallback(answers), ai: false };
+  }
+}
+
+// called after Crown Fitting Notes are saved; returns the review link
+export async function buildSnapshot(env, x, { dealId, contactId, answers, who, company, firstName }) {
+  const { data, ai } = await draftContent(env, answers, company || who);
+  const prev = await env.REPORTS.get(`snapdeal:${dealId}`);
+  const tok = prev || token();
+  const rec = { dealId: String(dealId), contactId: String(contactId), company: company || who, who, firstName, date: new Date().toISOString(), scores: Object.fromEntries(SCORES.map(([k]) => [k, Number(answers[k]) || null])), data, ai, status: 'draft', pub: token(16) };
+  await env.REPORTS.put(`snap:${tok}`, JSON.stringify(rec));
+  await env.REPORTS.put(`snapdeal:${dealId}`, tok);
+  return { url: `${WORKER}/snapshot/${tok}`, ai };
+}
+
+function doc(rec, mode) {
+  const d = rec.data || {};
+  const ed = mode === 'review';
+  const E = (path, val, tag = 'span', cls = '') => `<${tag}${cls ? ` class="${cls}"` : ''}${ed ? ` data-k="${path}" contenteditable="true"` : ''}>${esc(val)}</${tag}>`;
+  const date = new Date(rec.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' });
+  const scores = SCORES.filter(([k]) => rec.scores && rec.scores[k]).map(([k, lab]) => `<div class="sc"><span>${esc(lab)}</span><b><i style="width:${(rec.scores[k] / 5) * 100}%"></i></b><em>${rec.scores[k]}/5</em></div>`).join('');
+  const obs = (d.observations || []).slice(0, 3).map((o, i) => `<div class="card"><div class="num">${i + 1}</div>${E(`observations.${i}.title`, o.title, 'h3')}<p class="k">What we saw</p>${E(`observations.${i}.saw`, o.saw, 'p')}<p class="k">Why it matters</p>${E(`observations.${i}.why`, o.why, 'p')}${o.quick_win || ed ? `<div class="qw"${!o.quick_win && ed ? ' data-empty="1"' : ''}><p class="k">Quick win</p>${E(`observations.${i}.quick_win`, o.quick_win || '', 'p')}</div>` : '<p class="plan">The full fix is in your plan.</p>'}</div>`).join('');
+  const help = (d.help || []).map((h, i) => `<li><b>&#10003;</b><div>${E(`help.${i}.title`, h.title, 'strong')}${h.quote || ed ? `<small>&ldquo;${E(`help.${i}.quote`, h.quote || '')}&rdquo;</small>` : ''}</div></li>`).join('');
+  const dates = (d.dates || []).map((t, i) => `<div class="dt">${E(`dates.${i}.when`, t.when, 'b')}${E(`dates.${i}.what`, t.what, 'span')}</div>`).join('');
+  const att = (d.attendees || []).map((t, i) => `<li>${E(`attendees.${i}.name`, t.name, 'b')} &middot; ${E(`attendees.${i}.role`, t.role)}</li>`).join('');
+  return `<article class="snap">
+<header class="hdr"><div class="hdr-top"><img src="${LOGO}" alt="Markit Mike Agency" class="logo"><div class="meta">Prepared for<b>${esc(rec.company)}</b>${esc(date)}</div></div>
+<p class="eyebrow">Crown Fitting recap</p><h1>Brand Experience <span>Snapshot</span></h1></header>
+<div class="foil"></div>
+<section class="sec heard"><div><p class="label">What we heard</p><blockquote>&ldquo;${E('quote', d.quote)}&rdquo;<small>${E('quote_label', d.quote_label)}</small></blockquote></div>
+<div class="today"><h4>Where things stand</h4>${(d.where || []).map((w, i) => E(`where.${i}`, w, 'p')).join('')}</div></section>
+${scores ? `<section class="sec"><p class="label">Your Crown scorecard</p><div class="scores">${scores}</div></section>` : ''}
+<section class="sec"><p class="label">Three observations</p><div class="cards">${obs}</div></section>
+<section class="sec sum"><p>${E('summary', d.summary, 'strong')} ${E('summary_more', d.summary_more)}</p></section>
+<section class="sec two"><div><p class="label">What you told us you want help with</p><ul class="help">${help}</ul></div>
+<div>${dates ? `<p class="label">Key dates you mentioned</p><div class="dates">${dates}</div>` : ''}${att ? `<p class="label">Who should join the walkthrough</p><ul class="att">${att}</ul>` : ''}</div></section>
+${d.recommendation && (d.recommendation.offer || ed) ? `<section class="sec rec"><p class="label">Our recommendation</p><h3>${E('recommendation.offer', d.recommendation.offer || '')}</h3>${E('recommendation.why', d.recommendation.why || '', 'p')}</section>` : ''}
+<section class="sec next"><p class="label">Where we go from here</p>${E('next', d.next, 'p')}<a class="cta" href="https://markitmike.com/crownfitting">Book your plan walkthrough</a></section>
+<footer class="sig"><img src="${AVATAR}" alt="Markit Mike"><div><b>Markit Mike</b><span>Markit Mike Agency&trade;</span><span>(714) 919 9469 &middot; team@markitmike.com &middot; markitmike.com</span></div></footer>
+</article>`;
+}
+
+const CSS = `
+:root{--gold:#E79A27;--teal:#108193;--purple:#5D0EA6;--ink:#1B1030;--body:#3A3646;--soft:#F6F2FB;--line:#E7E0F0;--bg:#EFEAF6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,Arial,sans-serif;color:var(--body);font-size:15px;line-height:1.5}
+.snap{max-width:860px;margin:24px auto 60px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 20px 60px rgba(43,15,99,.14)}
+.hdr{background:linear-gradient(160deg,#036684 0%,#0B3354 52%,#1D0A40 100%);color:#fff;padding:26px 44px 56px;clip-path:polygon(0 0,100% 0,100% calc(100% - 30px),0 100%)}
+.hdr-top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.logo{height:40px}
+.meta{text-align:right;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.78)}.meta b{display:block;color:#fff;font:800 16px Montserrat,Arial;letter-spacing:0;text-transform:none}
+.eyebrow{margin:22px 0 0;font:800 11px Montserrat,Arial;letter-spacing:.3em;text-transform:uppercase;color:#FBE7C6}
+h1{margin:6px 0 0;font:900 clamp(28px,5vw,40px)/1.05 Montserrat,Arial;color:#fff}h1 span{background:linear-gradient(90deg,#F7C66B,#E79A27 55%,#C9741A);-webkit-background-clip:text;background-clip:text;color:transparent}
+.foil{height:6px;margin-top:-6px;background:linear-gradient(90deg,#F7D58B,#E79A27 40%,#B8681A 70%,#F2B85A)}
+.sec{padding:22px 44px 0}.sec:last-of-type{padding-bottom:10px}
+.label{display:flex;align-items:center;gap:8px;margin:0 0 10px;font:800 11px Montserrat,Arial;letter-spacing:.2em;text-transform:uppercase;color:var(--purple)}.label::before{content:"";width:18px;height:3px;border-radius:2px;background:var(--gold)}
+.heard{display:grid;grid-template-columns:1.5fr 1fr;gap:28px;align-items:center}
+blockquote{margin:0;padding-left:16px;border-left:3px solid var(--gold);font:italic 500 21px/1.3 "Playfair Display",Georgia,serif;color:var(--ink)}blockquote small{display:block;margin-top:8px;font:12px Inter,Arial;color:#7A7388;font-style:normal}
+.today{background:var(--soft);border-radius:12px;padding:14px 16px;font-size:14px}.today h4{margin:0 0 6px;font:800 11px Montserrat,Arial;letter-spacing:.14em;text-transform:uppercase;color:var(--teal)}.today p{margin:0 0 6px}
+.scores{display:grid;gap:8px}.sc{display:grid;grid-template-columns:200px 1fr 44px;align-items:center;gap:12px;font-size:14px;font-weight:600;color:var(--ink)}
+.sc b{height:10px;border-radius:99px;background:#EEE8F6;overflow:hidden}.sc i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--purple))}.sc em{font-style:normal;font-weight:800;color:var(--purple);text-align:right}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{position:relative;border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 6px 18px rgba(43,15,99,.07)}
+.card .num{position:absolute;right:14px;top:14px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:900 13px Montserrat,Arial;color:#fff;background:linear-gradient(135deg,var(--gold),var(--purple))}
+.card h3{margin:0 36px 10px 0;font:900 17px/1.2 Montserrat,Arial;color:var(--ink)}.card p{margin:0 0 8px;font-size:14px}.k{margin:0!important;font:800 10px Montserrat,Arial!important;letter-spacing:.16em;text-transform:uppercase;color:var(--teal)}
+.qw{margin-top:8px;padding:10px 12px;border-radius:10px;background:#FDF4E7}.qw .k{color:#9A5B00}.plan{color:#7A7388;font-style:italic}
+.sum p{margin:0;padding:16px 18px;border-radius:14px;background:linear-gradient(110deg,var(--soft),#FDF4E7);font-size:16px;color:var(--ink)}
+.two{display:grid;grid-template-columns:1.3fr 1fr;gap:28px}.help,.att{list-style:none;margin:0;padding:0;display:grid;gap:10px}.help li{display:flex;gap:10px}.help li>b{color:var(--gold)}
+.help strong{display:block;color:var(--ink)}.help small{display:block;color:#7A7388;font-style:italic}.att li{font-size:14px}
+.dates{display:grid;gap:8px;margin-bottom:16px}.dt{display:flex;gap:12px;align-items:baseline}.dt b{min-width:52px;font:900 14px Montserrat,Arial;color:var(--purple)}
+.rec h3{margin:0 0 6px;font:900 22px Montserrat,Arial;color:var(--ink)}.rec p{margin:0}
+.next p{margin:0 0 14px}.cta{display:inline-block;padding:13px 26px;border-radius:999px;background:linear-gradient(135deg,#FFE08A,#E79A27 55%,#C06F14);color:#2A0E52;font:900 15px Montserrat,Arial;text-decoration:none}
+.sig{display:flex;gap:14px;align-items:center;margin:26px 44px 0;padding:18px 0 28px;border-top:1px solid var(--line)}.sig img{width:56px;height:56px;border-radius:50%;border:2px solid var(--gold);object-fit:cover}.sig div{display:grid;font-size:13px}.sig b{color:var(--ink);font-size:15px}
+[contenteditable]{outline:1px dashed rgba(93,14,166,.35);outline-offset:2px;border-radius:4px;cursor:text}[contenteditable]:focus{outline:2px solid var(--gold);background:#FFFBF2}
+[contenteditable]:empty::before{content:"Click to add, or leave blank";color:#b3a9c4;font-style:italic}
+.bar{position:sticky;top:0;z-index:5;background:#1D0A40;color:#fff;padding:12px max(16px,env(safe-area-inset-left));display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.bar p{margin:0;font-size:14px}.bar .b{display:flex;gap:10px;flex-wrap:wrap}.bar button{border:0;border-radius:999px;padding:10px 18px;font:800 14px Montserrat,Arial;cursor:pointer}
+.save{background:#fff;color:#1D0A40}.send{background:linear-gradient(135deg,#FFE08A,#E79A27 55%,#C06F14);color:#2A0E52}.bar button[disabled]{opacity:.6;cursor:wait}
+@media (max-width:720px){.heard,.two{grid-template-columns:1fr}.cards{grid-template-columns:1fr}.sec{padding:20px 20px 0}.hdr{padding:22px 20px 50px}.sig{margin:22px 20px 0}.sc{grid-template-columns:130px 1fr 40px}}
+@media print{body{background:#fff}.bar{display:none}.snap{box-shadow:none;margin:0;border-radius:0}}
+`;
+
+function html(title, body, extraHead = '') {
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${esc(title)}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Montserrat:wght@800;900&family=Playfair+Display:ital,wght@1,500&display=swap"><style>${CSS}</style>${extraHead}</head><body>${body}</body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
+}
+
+function setPath(obj, path, val) {
+  const ks = path.split('.');
+  let o = obj;
+  for (let i = 0; i < ks.length - 1; i++) { const k = /^\d+$/.test(ks[i]) ? Number(ks[i]) : ks[i]; if (o[k] == null) o[k] = /^\d+$/.test(ks[i + 1]) ? [] : {}; o = o[k]; }
+  o[/^\d+$/.test(ks[ks.length - 1]) ? Number(ks[ks.length - 1]) : ks[ks.length - 1]] = val;
+}
+
+// GET and POST /snapshot/<tok>: the review page
+export async function snapshotReview(req, env, x) {
+  const tok = new URL(req.url).pathname.split('/')[2] || '';
+  if (!/^[a-z0-9]{10,24}$/.test(tok)) return new Response('Not found', { status: 404 });
+  const rec = await env.REPORTS.get(`snap:${tok}`, 'json');
+  if (!rec) return html('Not found', '<p style="padding:40px;text-align:center">This Snapshot link is not valid.</p>');
+  if (req.method === 'POST') {
+    let b = {};
+    try { b = await req.json(); } catch {}
+    if (b.edits && typeof b.edits === 'object') for (const [k, v] of Object.entries(b.edits)) if (/^[a-z_]+(\.(\d+|[a-z_]+)){0,2}$/.test(k)) setPath(rec.data, k, String(v).slice(0, 1500).trim());
+    // tidy: drop empty list items the editor cleared
+    for (const k of ['help', 'dates', 'attendees']) if (Array.isArray(rec.data[k])) rec.data[k] = rec.data[k].filter((it) => it && Object.values(it).some((v) => String(v || '').trim()));
+    if (Array.isArray(rec.data.where)) rec.data.where = rec.data.where.filter((w) => String(w || '').trim());
+    rec.updated = Date.now();
+    let msg = 'Saved.';
+    if (b.action === 'send') {
+      const contact = await x.hs(env, 'GET', `/crm/v3/objects/contacts/${rec.contactId}?properties=email,firstname`);
+      const email = contact.properties?.email;
+      if (!email) return new Response(JSON.stringify({ error: 'This contact has no email address in HubSpot' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      await env.REPORTS.put(`snappub:${rec.pub}`, tok);
+      await x.sendAndLog(env, { to: email, contact, deal: { id: rec.dealId }, ...snapshotEmail({ firstName: contact.properties.firstname, company: rec.company, link: `${WORKER}/s/${rec.pub}` }) });
+      rec.status = 'sent'; rec.sentAt = Date.now();
+      await x.hs(env, 'POST', '/crm/v3/objects/notes', { properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Brand Experience Snapshot sent</b> to ${esc(email)}.</p><p><a href="${WORKER}/s/${rec.pub}">Client view</a> &middot; <a href="${WORKER}/snapshot/${tok}">Edit view</a></p>` }, associations: [{ to: { id: rec.contactId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }, { to: { id: rec.dealId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 214 }] }] }).catch((e) => console.error('snap note', e.message));
+      if (rec.taskId) await x.hs(env, 'PATCH', `/crm/v3/objects/tasks/${rec.taskId}`, { properties: { hs_task_status: 'COMPLETED' } }).catch(() => {});
+      msg = `Sent to ${email}. You will get an alert the first time they open it.`;
+    }
+    await env.REPORTS.put(`snap:${tok}`, JSON.stringify(rec));
+    return new Response(JSON.stringify({ ok: true, message: msg }), { headers: { 'Content-Type': 'application/json' } });
+  }
+  const sent = rec.status === 'sent';
+  const bar = `<div class="bar"><p>${sent ? '<b>Sent.</b> Edits you save now also update what they see.' : rec.ai ? '<b>Draft ready.</b> Click any text to edit it, then Save or Approve and send.' : '<b>Starter draft.</b> The AI draft was unavailable, so this was built straight from your notes. Edit, then send.'}</p><div class="b"><span id="st" style="align-self:center;font-size:13px;opacity:.8"></span><button class="save" id="save" type="button">Save</button>${sent ? `<a href="${WORKER}/s/${rec.pub}" target="_blank" rel="noopener" style="color:#FBE7C6;align-self:center;font-weight:800;font-size:14px">Client view</a>` : '<button class="send" id="send" type="button">Approve and send</button>'}</div></div>`;
+  const js = `<script>(function(){var st=document.getElementById('st');function edits(){var o={};document.querySelectorAll('[data-k]').forEach(function(el){o[el.getAttribute('data-k')]=el.innerText;});return o;}
+function go(action,btn){btn.disabled=true;st.textContent=action==='send'?'Sending...':'Saving...';fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({edits:edits(),action:action})}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Something went wrong');return d;});}).then(function(d){st.textContent=d.message;btn.disabled=false;if(action==='send')setTimeout(function(){location.reload();},1200);}).catch(function(e){st.textContent=e.message;btn.disabled=false;});}
+document.getElementById('save').onclick=function(){go('save',this);};var s=document.getElementById('send');if(s)s.onclick=function(){go('send',this);};
+document.addEventListener('paste',function(e){if(e.target.closest&&e.target.closest('[contenteditable]')){e.preventDefault();document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text'));}});})();</script>`;
+  return html(`Snapshot: ${rec.company}`, bar + doc(rec, 'review') + js);
+}
+
+// GET /s/<pub>: what the prospect sees
+export async function snapshotClient(req, env, x) {
+  const pub = new URL(req.url).pathname.split('/')[2] || '';
+  if (!/^[a-z0-9]{10,24}$/.test(pub)) return new Response('Not found', { status: 404 });
+  const tok = await env.REPORTS.get(`snappub:${pub}`);
+  const rec = tok && (await env.REPORTS.get(`snap:${tok}`, 'json'));
+  if (!rec) return html('Not found', '<p style="padding:40px;text-align:center">This link is not available.</p>');
+  if (!rec.openedAt) {
+    rec.openedAt = Date.now();
+    await env.REPORTS.put(`snap:${tok}`, JSON.stringify(rec));
+    const title = `${rec.who || rec.company} opened their Brand Experience Snapshot`;
+    await Promise.allSettled([
+      x.sendRaw && x.sendRaw(env, { to: env.OWNER_EMAIL, subject: `Warm lead: ${title}`, html: `<div style="font-family:Arial,Helvetica,sans-serif;color:#1B1030;max-width:600px;"><p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:2px;color:#5D0EA6;">WARM LEAD</p><p style="margin:0 0 12px;font-size:20px;font-weight:800;">${esc(title)}</p><p style="font-size:15px;">They are reading it right now. A great moment to confirm the plan walkthrough.</p><p><a href="https://app-na2.hubspot.com/contacts/246716405/record/0-3/${rec.dealId}" style="display:inline-block;padding:11px 18px;border-radius:8px;background:#5D0EA6;color:#fff;font-weight:700;text-decoration:none;">Open deal in HubSpot</a></p></div>` }),
+      x.hs(env, 'POST', '/crm/v3/objects/tasks', { properties: { hs_timestamp: new Date().toISOString(), hs_task_subject: title, hs_task_body: 'They are reading it right now. A good moment to confirm the plan walkthrough.', hs_task_status: 'NOT_STARTED', hs_task_priority: 'HIGH', hs_task_type: 'CALL' }, associations: [{ to: { id: rec.contactId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 204 }] }, { to: { id: rec.dealId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 216 }] }] }),
+    ]);
+  }
+  return html(`Brand Experience Snapshot: ${rec.company}`, doc(rec, 'client'));
+}

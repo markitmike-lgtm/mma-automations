@@ -5,6 +5,7 @@
 // Also here: the link and prep task at booking, "did they show?" tasks, the no show rebooking email,
 // and the day 3 and day 7 nudges for website leads who have not booked.
 import { fittingThanksEmail, noShowEmail, leadNudgeEmail } from './emails.js';
+import { buildSnapshot } from './snapshot.js';
 
 const WORKER = 'https://mma-automations.markitmike.workers.dev';
 const HELD = 'decisionmakerboughtin';
@@ -207,7 +208,7 @@ async function lookup(env, tok) {
   return raw ? JSON.parse(raw) : null;
 }
 
-export async function fittingRoute(req, env, x) {
+export async function fittingRoute(req, env, x, ctx) {
   const url = new URL(req.url);
   const tok = url.pathname.split('/')[2] || '';
   const ref = await lookup(env, tok);
@@ -216,7 +217,7 @@ export async function fittingRoute(req, env, x) {
   const cp = contact.properties || {};
   const who = [cp.firstname, cp.lastname].filter(Boolean).join(' ') || cp.email;
 
-  if (req.method === 'POST') return save(req, env, x, ref, contact, who);
+  if (req.method === 'POST') return save(req, env, x, ref, contact, who, ctx);
 
   const done = await env.REPORTS.get(`fitdone:${ref.dealId}`);
   const known = await contextPanel(env, x, ref, cp);
@@ -272,7 +273,7 @@ export function answersToMarkdown(a) {
   return out.join('\n\n');
 }
 
-async function save(req, env, x, ref, contact, who) {
+async function save(req, env, x, ref, contact, who, ctx) {
   let body = {};
   try { body = await req.json(); } catch { return new Response(JSON.stringify({ error: 'Bad request' }), { status: 400 }); }
   const a = {};
@@ -300,17 +301,25 @@ async function save(req, env, x, ref, contact, who) {
   if (deal && x.stageRank(env, deal.properties.dealstage) < x.stageRank(env, HELD)) steps.push(x.setStage(env, dealId, HELD));
   if (!already && body.thanks && cp.email) steps.push(x.sendAndLog(env, { to: cp.email, contact, deal: { id: dealId }, ...fittingThanksEmail({ firstName: cp.firstname }) }));
   if (!already) {
-    const due = new Date(Date.now() + 864e5); due.setUTCHours(17, 0, 0, 0);
     const notFit = a.offer === 'Not a fit';
-    steps.push(x.hs(env, 'POST', '/crm/v3/objects/tasks', { properties: {
-      hs_timestamp: due.toISOString(),
-      hs_task_subject: notFit ? `Close out or nurture: ${cp.company || who}` : `Review and send Brand Experience Snapshot: ${cp.company || who}`,
-      hs_task_body: notFit ? 'Marked Not a fit on the Crown Fitting. Send a kind close out or add them to the newsletter.' : `Crown Fitting notes are on the deal${a.offer ? `. Recommended: ${a.offer}` : ''}. Build the Snapshot, review it, then send it with the Thank You + Snapshot template.`,
-      hs_task_status: 'NOT_STARTED', hs_task_priority: 'HIGH', hs_task_type: 'EMAIL' }, associations: assoc(204, 216) }));
+    const due = new Date(Date.now() + 864e5); due.setUTCHours(17, 0, 0, 0);
+    const makeTask = (subject, bodyText) => x.hs(env, 'POST', '/crm/v3/objects/tasks', { properties: { hs_timestamp: due.toISOString(), hs_task_subject: subject, hs_task_body: bodyText, hs_task_status: 'NOT_STARTED', hs_task_priority: 'HIGH', hs_task_type: 'EMAIL' }, associations: assoc(204, 216) });
+    if (notFit) steps.push(makeTask(`Close out or nurture: ${cp.company || who}`, 'Marked Not a fit on the Crown Fitting. Send a kind close out or add them to the newsletter.'));
+    else {
+      // draft the Snapshot in the background so Submit returns right away
+      const job = (async () => {
+        const snap = await buildSnapshot(env, x, { dealId, contactId: contact.id, answers: a, who, company: cp.company || '', firstName: cp.firstname });
+        const t = await makeTask(`Review and send Brand Experience Snapshot: ${cp.company || who}`, `Your Snapshot draft is ready: ${snap.url}\nClick any text to edit it, then Approve and send.${a.offer ? ` Recommended: ${a.offer}.` : ''}`);
+        const tok = await env.REPORTS.get(`snapdeal:${dealId}`);
+        const rec = tok && (await env.REPORTS.get(`snap:${tok}`, 'json'));
+        if (rec && t?.id) { rec.taskId = t.id; await env.REPORTS.put(`snap:${tok}`, JSON.stringify(rec)); }
+      })().catch((e) => console.error('snapshot job', e.message));
+      if (ctx && ctx.waitUntil) ctx.waitUntil(job); else steps.push(job);
+    }
   }
   (await Promise.allSettled(steps)).forEach((r) => r.status === 'rejected' && console.error('fitting save', r.reason && r.reason.message));
   await env.REPORTS.put(`fitdone:${dealId}`, String(Date.now()));
-  const msg = already ? 'Your updated notes were added to the deal.' : `Notes are on the deal, it moved to Crown Fitting Held${body.thanks && cp.email ? `, ${esc(cp.firstname || 'they')} got the thank you email` : ''}, and your Snapshot task is due tomorrow.`;
+  const msg = already ? 'Your updated notes were added to the deal.' : `Notes are on the deal, it moved to Crown Fitting Held${body.thanks && cp.email ? `, ${esc(cp.firstname || 'they')} got the thank you email` : ''}, and your Brand Experience Snapshot draft will be ready in HubSpot in about a minute.`;
   return new Response(JSON.stringify({ ok: true, message: msg, hubspot: `https://app-na2.hubspot.com/contacts/246716405/record/0-3/${dealId}` }), { headers: { 'Content-Type': 'application/json' } });
 }
 
