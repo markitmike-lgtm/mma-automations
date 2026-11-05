@@ -13,46 +13,57 @@ const PROSPECT = 'appointmentscheduled';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export const FIT_SECTIONS = [
-  { t: 'The business', f: [
+  { t: 'The business', mins: 4, say: "Let's start with the big picture so I really understand your world.", ask: ['How many locations are you at today, and where are they?', 'Are they company owned, franchised or a mix?', 'What does growth look like for you over the next 12 months?'], f: [
     ['locations', 'Locations today', 'text', 'Number of locations and where'],
     ['ownership', 'Ownership model', 'chips', ['Company owned', 'Franchised', 'Mixed', 'Single location']],
     ['growth', 'Growth plans, next 12 months', 'area', 'New units, new markets, remodels, new concepts'],
   ] },
-  { t: 'Goals', f: [
+  { t: 'Goals', mins: 5, say: 'Now let\'s talk about where you want to go.', ask: ['If we were sitting here 90 days from now celebrating, what would have happened?', 'What are the top three things you want marketing to move for you?'], tip: 'Push gently for numbers: sales, traffic, new locations, loyalty members.', f: [
     ['win90', 'What does a win look like in 90 days?', 'area', 'In their words'],
     ['pri1', 'Priority 1', 'text'], ['pri2', 'Priority 2', 'text'], ['pri3', 'Priority 3', 'text'],
   ] },
-  { t: 'Current marketing', f: [
+  { t: 'Current marketing', mins: 5, say: 'Help me understand how marketing works for you today.', ask: ['Who handles marketing right now?', 'Roughly what do you invest in marketing each month?', 'What has been working well?', 'What have you tried that did not land?'], tip: 'No judgment on budget. If they hesitate, offer the ranges below.', f: [
     ['who', 'Who handles marketing today', 'multi', ['In house team', 'Agency', 'Freelancers', 'Owner or founder', 'Nobody']],
     ['budget', 'Monthly marketing budget', 'chips', ['Under $2K', '$2K to $5K', '$5K to $10K', '$10K to $25K', '$25K plus', 'Not sure']],
     ['working', 'What is working', 'area'],
     ['notworking', 'What is not working', 'area'],
   ] },
-  { t: 'Customer experience', f: [
+  { t: 'Customer experience', mins: 4, say: 'Let\'s look at the experience from your customer\'s side.', ask: ['Do you have a loyalty program today? How is it performing?', 'How do your reviews look, and does anyone respond to them?', 'How are people ordering: online, your own app, third party?'], f: [
     ['loyalty', 'Loyalty program', 'chips', ['App based', 'POS or punch card', 'None', 'Not sure']],
     ['rating', 'Average review rating', 'text', 'For example 4.3 on Google'],
     ['ordering', 'Online ordering or app', 'chips', ['Own app', 'Third party only', 'Both', 'None']],
     ['webnotes', 'Website and Google profile notes', 'area'],
   ] },
-  { t: 'Pain point', f: [
+  { t: 'Pain point', mins: 3, say: 'Let me ask you the big one.', ask: ['What is the one thing about the business that keeps you up at night?'], tip: 'Pause after you ask and let the silence work. Write down their exact words, they are gold for the Snapshot.', f: [
     ['pain', 'The thing keeping them up at night', 'area', 'Capture it in their words'],
   ] },
-  { t: 'Quick scores', note: '1 is weak, 5 is strong. These feed the Brand Experience Snapshot.', f: [
+  { t: 'Quick scores', note: '1 is weak, 5 is strong. These feed the Brand Experience Snapshot.', tip: 'Score quietly as you listen. No need to say these out loud.', f: [
     ['s_brand', 'Brand', 'score'], ['s_digital', 'Digital presence', 'score'], ['s_loyalty', 'Loyalty and retention', 'score'],
     ['s_lsm', 'Local store marketing', 'score'], ['s_reviews', 'Reviews and reputation', 'score'],
   ] },
-  { t: 'Decision and timing', f: [
+  { t: 'Decision and timing', mins: 3, say: 'Just a couple of quick questions about timing.', ask: ['Besides you, who else would weigh in on a decision like this?', 'When would you ideally want to get started?', 'Are you looking at any other options right now?'], tip: 'For budget, try: "Is there a range you had in mind?"', f: [
     ['decider', 'Who decides', 'text', 'Names and roles'],
     ['comfort', 'Budget comfort', 'chips', ['Ready now', 'Needs approval', 'Tight']],
     ['timeline', 'Timeline', 'chips', ['This month', '30 to 60 days', '60 to 90 days', 'Later']],
     ['competing', 'Other options they are considering', 'text'],
   ] },
-  { t: 'Recommendation', f: [
+  { t: 'Recommendation', mins: 4, say: 'Here\'s what I\'m hearing: [recap their 90 day win and their pain point in their words]. Based on that, I\'d recommend [offer], and here\'s why. Next, I\'ll send your Brand Experience Snapshot within one business day with the full picture. Does it make sense to set a time now to walk through it together?', tip: 'Book the walkthrough before you hang up. Then click Submit below.', f: [
     ['offer', 'Recommended next step', 'chips', ['Brand Checkup', 'Glow Up', 'Gold Starter', 'Platinum Accelerator', 'Crown Jewel', 'Not a fit']],
     ['next', 'Next steps you agreed on', 'area'],
     ['notes', 'Anything else', 'area'],
   ] },
 ];
+
+const OPENING = { mins: 2, say: "Thanks so much for making time today, {first}. Here's how I'd love to use our 30 minutes: I'll ask about your business, your goals and what's getting in the way. At the end I'll share what I'm seeing and what a smart next step could look like. If it's a fit, great. If not, you'll still walk away with a few ideas you can use. Sound good?", tip: 'Ask if it is okay to take notes as you go. Smile, slow down, and let them talk.' };
+
+function scriptBox(sec, first) {
+  const fill = (t) => esc(t).replace(/\{first\}/g, esc(first || 'there'));
+  const parts = [];
+  if (sec.say) parts.push(`<p class="say"><span>Say</span>${fill(sec.say)}</p>`);
+  if (sec.ask && sec.ask.length) parts.push(`<div class="ask"><span>Ask</span><ol>${sec.ask.map((q) => `<li>${fill(q)}</li>`).join('')}</ol></div>`);
+  if (sec.tip) parts.push(`<p class="tip"><span>Tip</span>${fill(sec.tip)}</p>`);
+  return parts.length ? `<div class="script">${parts.join('')}</div>` : '';
+}
 
 function token() {
   const a = new Uint8Array(12); crypto.getRandomValues(a);
@@ -111,6 +122,13 @@ textarea{min-height:76px;resize:vertical}input:focus,textarea:focus{outline:none
 .chk{display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600}.chk input{width:18px;height:18px;accent-color:#5D0EA6}
 button{border:0;border-radius:999px;padding:13px 26px;font:900 15px Montserrat,system-ui,sans-serif;color:#2A0E52;background:linear-gradient(135deg,#FFE08A,#E79A27 55%,#C06F14);cursor:pointer}
 button[disabled]{opacity:.6;cursor:wait}.saved{font-size:12px;color:var(--mut)}.err{color:#b42318;font-weight:700;font-size:14px}
+.script{margin:0 0 16px;padding:14px 16px;border-radius:14px;background:#FDF6EA;border-left:4px solid var(--g);font-size:15px;line-height:1.55}
+.script p{margin:0 0 8px}.script p:last-child,.script .ask:last-child{margin-bottom:0}.script ol{margin:4px 0 8px;padding-left:20px}.script li{margin:0 0 4px}
+.script span{display:inline-block;min-width:40px;margin-right:8px;font-size:10px;font-weight:900;letter-spacing:1.6px;text-transform:uppercase;color:#9A5B00;vertical-align:1px}
+.script .say{font-weight:600;color:#2a0d55}.script .tip{color:#5a5372;font-size:14px}
+.mins{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:1px;color:var(--mut);background:#f1ecf8;border-radius:999px;padding:4px 10px}
+body.noscript .script{display:none}
+.tog{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.35);padding:8px 14px;font-size:13px;font-weight:800;margin-top:12px}
 .done{text-align:center;padding:40px 24px}.done h2{justify-content:center;font-size:24px}
 @media (max-width:640px){.grid{grid-template-columns:1fr}.f.half{grid-column:1/-1}}
 </style></head><body>${inner}</body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
@@ -146,9 +164,11 @@ export async function fittingRoute(req, env, x) {
   if (req.method === 'POST') return save(req, env, x, ref, contact, who);
 
   const done = await env.REPORTS.get(`fitdone:${ref.dealId}`);
-  const sections = FIT_SECTIONS.map((s, i) => `<section class="card"><h2><b>${i + 1}</b>${esc(s.t)}</h2>${s.note ? `<p class="note">${esc(s.note)}</p>` : ''}<div class="grid">${s.f.map(field).join('')}</div></section>`).join('');
+  const mins = (m) => (m ? `<span class="mins">${m} min</span>` : '');
+  const opening = `<section class="card"><h2><b>&#9733;</b>Opening${mins(OPENING.mins)}</h2>${scriptBox(OPENING, cp.firstname)}</section>`;
+  const sections = opening + FIT_SECTIONS.map((s, i) => `<section class="card"><h2><b>${i + 1}</b>${esc(s.t)}${mins(s.mins)}</h2>${scriptBox(s, cp.firstname)}${s.note ? `<p class="note">${esc(s.note)}</p>` : ''}<div class="grid">${s.f.map(field).join('')}</div></section>`).join('');
   const when = ref.start ? new Date(ref.start).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' PT' : '';
-  return page(`Crown Fitting: ${who}`, `<div class="top"><div class="in"><div class="eb">CROWN FITTING NOTES</div><h1>${esc(who)}${cp.company ? ' · ' + esc(cp.company) : ''}</h1><p class="sub">${when ? esc(when) + '. ' : ''}${done ? '<b>Already submitted.</b> Submitting again adds a new note but does not resend the thank you email.' : 'Answers save in this browser as you type. Click Submit when the call ends.'}</p></div></div>
+  return page(`Crown Fitting: ${who}`, `<div class="top"><div class="in"><div class="eb">CROWN FITTING NOTES</div><h1>${esc(who)}${cp.company ? ' · ' + esc(cp.company) : ''}</h1><p class="sub">${when ? esc(when) + '. ' : ''}${done ? '<b>Already submitted.</b> Submitting again adds a new note but does not resend the thank you email.' : 'Answers save in this browser as you type. Click Submit when the call ends.'}</p><button type="button" class="tog" id="tog">Hide script</button></div></div>
 <form id="fit" class="wrap" novalidate>${sections}</form>
 <div class="bar"><div class="in"><label class="chk"><input type="checkbox" id="thanks" ${done ? '' : 'checked'}> Send the thank you email to ${esc(cp.firstname || 'them')}</label><span class="saved" id="saved"></span><span class="err" id="err" hidden></span><button type="button" id="go">Submit Crown Fitting</button></div></div>
 <script>
@@ -157,6 +177,9 @@ var f=document.getElementById('fit'),KEY='mmafit-${tok}',saved=document.getEleme
 function data(){var o={};[].forEach.call(f.elements,function(el){if(!el.name)return;if(el.type==='radio'){if(el.checked)o[el.name]=el.value;}else if(el.type==='checkbox'){if(el.checked)(o[el.name]=o[el.name]||[]).push(el.value);}else if(el.value.trim())o[el.name]=el.value;});return o;}
 function fill(o){[].forEach.call(f.elements,function(el){var v=o[el.name];if(v==null)return;if(el.type==='radio')el.checked=el.value===v;else if(el.type==='checkbox')el.checked=[].concat(v).indexOf(el.value)>=0;else el.value=v;});}
 try{fill(JSON.parse(localStorage.getItem(KEY)||'{}'));}catch(e){}
+var tog=document.getElementById('tog');function setS(h){document.body.classList.toggle('noscript',h);tog.textContent=h?'Show script':'Hide script';}
+try{setS(localStorage.getItem('mmafit-noscript')==='1');}catch(e){}
+tog.addEventListener('click',function(){var h=!document.body.classList.contains('noscript');setS(h);try{localStorage.setItem('mmafit-noscript',h?'1':'0');}catch(e){}});
 var t;f.addEventListener('input',function(){clearTimeout(t);t=setTimeout(function(){try{localStorage.setItem(KEY,JSON.stringify(data()));saved.textContent='Saved in this browser';}catch(e){}},400);});
 go.addEventListener('click',function(){err.hidden=true;go.disabled=true;go.textContent='Submitting...';
 fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answers:data(),thanks:document.getElementById('thanks').checked})})
