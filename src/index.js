@@ -32,7 +32,7 @@ export default {
       if (req.method === 'GET' && url.pathname === '/check') return await check(env);
       if (req.method === 'POST' && url.pathname === '/stripe') return await stripe(req, env);
       if (req.method === 'GET' && url.pathname.startsWith('/report/')) { const r = await reportRoute(url, env); if (r) return r; }
-      if (req.method === 'GET' && url.pathname.startsWith('/u/')) return await unsubscribeRoute(url, env, X());
+      if ((req.method === 'GET' || req.method === 'POST') && url.pathname.startsWith('/u/')) return await unsubscribeRoute(url, env, X(), req.method);
       if (req.method === 'POST' && url.pathname === '/seen') return await seenRoute(req, env, X());
       if (req.method === 'GET' && url.pathname === '/sequence') return json(await sequenceSummary(env));
       if (url.pathname.startsWith('/fitting/')) return await fittingRoute(req, env, X(), ctx);

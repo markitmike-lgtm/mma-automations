@@ -132,6 +132,19 @@ export async function sequenceRun(env, x) {
   const state = await loadState(env);
   let dirty = false;
 
+  // one time: undo the 3 false unsubscribes on Nov 5 caused by email security scanners opening the old GET link
+  if (!(await env.REPORTS.get('fix:unsub-scanner-1105'))) {
+    for (const cid of ['585694981842', '585739241209', '585662956241']) {
+      const st = state.contacts[cid];
+      if (st && st.status === 'unsubscribed') {
+        st.status = 'active'; delete st.stoppedAt; dirty = true;
+        await x.hs(env, 'PATCH', `/crm/v3/objects/contacts/${cid}`, { properties: { hs_lead_status: 'IN_PROGRESS' } }).catch((e) => console.error('unsub fix', e.message));
+        await x.hs(env, 'POST', '/crm/v3/objects/notes', { properties: { hs_timestamp: new Date().toISOString(), hs_note_body: 'Back in the outreach sequence. The earlier unsubscribe was an automatic email security scan of the link, not the person.' }, associations: [{ to: { id: cid }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }] }).catch(() => {});
+      }
+    }
+    await env.REPORTS.put('fix:unsub-scanner-1105', '1');
+  }
+
   // 1. new enrollments: contacts marked In Progress that we have not seen yet
   const r = await x.hs(env, 'POST', '/crm/v3/objects/contacts/search', {
     filterGroups: [{ filters: [{ propertyName: 'hs_lead_status', operator: 'EQ', value: 'IN_PROGRESS' }] }],
@@ -229,7 +242,7 @@ export async function sequenceRun(env, x) {
     const site = `markitmike.com/portfolio/?mmc=${st.tok}`;
     const e = stepEmail(step, st, unsub, site);
     try {
-      const res = await resend(env, { from: 'Michael Hernandez <michael@markitmike.com>', to: [st.email], reply_to: env.REPLY_TO || env.OWNER_EMAIL, subject: e.subject, text: e.text, html: e.html, headers: { 'List-Unsubscribe': `<${unsub}>` } });
+      const res = await resend(env, { from: 'Michael Hernandez <michael@markitmike.com>', to: [st.email], reply_to: env.REPLY_TO || env.OWNER_EMAIL, subject: e.subject, text: e.text, html: e.html, headers: { 'List-Unsubscribe': `<${unsub}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } });
       await x.hs(env, 'POST', '/crm/v3/objects/emails', {
         properties: { hs_timestamp: new Date().toISOString(), hs_email_direction: 'EMAIL', hs_email_status: 'SENT', hs_email_subject: e.subject, hs_email_text: e.text, hs_email_html: e.html, hs_email_headers: JSON.stringify({ from: { email: 'michael@markitmike.com', firstName: 'Michael', lastName: 'Hernandez' }, to: [{ email: st.email }] }) },
         associations: [{ to: { id: String(cid) }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 198 }] }],
@@ -246,18 +259,23 @@ export async function sequenceRun(env, x) {
 }
 
 // GET /u/<token>: one click unsubscribe
-export async function unsubscribeRoute(url, env, x) {
-  const tok = url.pathname.split('/')[2] || '';
+export async function unsubscribeRoute(url, env, x, method = 'GET') {
+  const tok = (url.pathname.split('/')[2] || '').replace(/[^a-z0-9]/gi, '').slice(0, 40);
   const cid = tok && (await env.REPORTS.get(`seqtok:${tok}`));
-  const page = (msg) => new Response(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Markit Mike Agency</title><div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:60px auto;padding:0 20px;color:#1B1030;"><p style="font-size:12px;font-weight:800;letter-spacing:2px;color:#5D0EA6;">MARKIT MIKE AGENCY</p><h1 style="font-size:24px;">${msg}</h1><p style="color:#555;">You won't receive any more outreach emails from our team.</p></div>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex' } });
-  if (!cid) return page('You are unsubscribed.');
-  const state = await loadState(env);
-  const st = state.contacts[cid];
-  if (st && st.status === 'active') {
-    await stop(env, x, cid, st, 'unsubscribed', 'UNQUALIFIED', 'Unsubscribed from cold outreach.');
-    await saveState(env, state);
+  const shell = (inner) => new Response(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Markit Mike Agency</title><div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:60px auto;padding:0 20px;color:#1B1030;"><p style="font-size:12px;font-weight:800;letter-spacing:2px;color:#5D0EA6;">MARKIT MIKE AGENCY</p>${inner}</div>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex', 'Cache-Control': 'no-store' } });
+  // A GET only shows a confirm button. Email security scanners open every link, so a GET must never unsubscribe.
+  if (method !== 'POST') {
+    return shell(`<h1 style="font-size:24px;">Stop these emails?</h1><p style="color:#555;">Click below and you won't receive any more outreach emails from our team.</p><form method="post"><button type="submit" style="font:700 15px Arial,Helvetica,sans-serif;background:#5D0EA6;color:#fff;border:0;border-radius:8px;padding:12px 22px;cursor:pointer;">Unsubscribe me</button></form>`);
   }
-  return page('You are unsubscribed.');
+  if (cid) {
+    const state = await loadState(env);
+    const st = state.contacts[cid];
+    if (st && st.status === 'active') {
+      await stop(env, x, cid, st, 'unsubscribed', 'UNQUALIFIED', 'Unsubscribed from cold outreach.');
+      await saveState(env, state);
+    }
+  }
+  return shell(`<h1 style="font-size:24px;">You are unsubscribed.</h1><p style="color:#555;">You won't receive any more outreach emails from our team.</p>`);
 }
 
 // POST /seen: a sequenced prospect opened markitmike.com from our link
