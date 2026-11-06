@@ -250,12 +250,12 @@ async function saveKit(req, env, x, ref, tok, contact, who, ctx) {
   if (ref.kit === 'kickoff') {
     const missing = ['Logo files', 'Brand guidelines', 'Photo library', 'Website login', 'Google Business Profile access', 'Yelp access', 'Social logins', 'POS or loyalty reports', 'Review platform access'].filter((i) => !(a.have || []).includes(i));
     steps.push(cuTask('Onboarding', `Kickoff notes: ${company} (${dateLabel})`, kitToMarkdown('kickoff', a)));
-    for (const m of missing) steps.push(cuTask('Assets and Access', `Get from client: ${m}`, `Still needed after kickoff on ${dateLabel}.${a.access_notes ? `\n\n${a.access_notes}` : ''}`, { due_date: Date.now() + 5 * 864e5 }));
+    if (missing.length) steps.push(cuTask('Assets and Access', `Get from client: ${missing.length} item${missing.length === 1 ? '' : 's'} after kickoff`, `Still needed after kickoff on ${dateLabel}:\n${missing.map((m) => `- [ ] ${m}`).join('\n')}${a.access_notes ? `\n\n${a.access_notes}` : ''}`, { due_date: Date.now() + 5 * 864e5 }));
     if (lists?.Deliverables?.id) steps.push(renameBuilds(env, x, lists.Deliverables.id, [a.build1, a.build2]));
     const start = /^\d{4}-\d{2}-\d{2}$/.test(String(a.startdate || '').trim()) ? String(a.startdate).trim() : new Date().toISOString().slice(0, 10);
     if (dealId) await env.REPORTS.put(`start:${dealId}`, start);
     if (x.scheduleTimeline && dealId) steps.push(x.scheduleTimeline(env, x, dealId, start).catch((e) => console.error('timeline', e.message)));
-    msg = `Kickoff notes are in ClickUp, ${missing.length} missing access item${missing.length === 1 ? '' : 's'} became tasks, and every due date now counts from ${start}.`;
+    msg = `Kickoff notes are in ClickUp, ${missing.length ? `the ${missing.length} missing access item${missing.length === 1 ? ' is' : 's are'} on one task in Assets and Access, ` : ''}and every due date now counts from ${start} (updates within 10 minutes).`;
     if (!lists) msg = 'Notes are on the deal. No ClickUp folder is linked to this deal yet, so nothing was added there.';
   }
 

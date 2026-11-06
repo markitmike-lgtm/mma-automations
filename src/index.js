@@ -14,10 +14,11 @@ import { fittingRoute, answersToMarkdown } from './fitting.js';
 import { snapshotReview, snapshotClient } from './snapshot.js';
 import { bookRoute } from './schedule.js';
 import { kitRoute } from './kits.js';
+import { startClientBuild, scheduleTimeline, approveRoute, portalRoute } from './fulfill.js';
 
 const trimEnv = (rawEnv) => Object.fromEntries(Object.entries(rawEnv).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
 // shared helpers handed to ops.js
-const X = () => ({ hs, cu, contactByEmail, dealForEmail, sendAndLog, sendRaw, setStage, stageRank, planForDeal, tooMany, recordOptIn });
+const X = () => ({ hs, cu, contactByEmail, dealForEmail, sendAndLog, sendRaw, setStage, stageRank, planForDeal, tooMany, recordOptIn, scheduleTimeline });
 
 export default {
   async scheduled(event, rawEnv, ctx) {
@@ -40,6 +41,8 @@ export default {
       if (url.pathname.startsWith('/fitting/')) return await fittingRoute(req, env, X(), ctx);
       if (url.pathname.startsWith('/snapshot/')) return await snapshotReview(req, env, X());
       if (url.pathname.startsWith('/kit/')) return await kitRoute(req, env, X(), ctx);
+      if ((req.method === 'GET' || req.method === 'POST') && url.pathname.startsWith('/approve/')) return await approveRoute(req, env, X());
+      if ((req.method === 'GET' || req.method === 'POST') && url.pathname.startsWith('/portal/')) return await portalRoute(req, env, X());
       if ((req.method === 'GET' || req.method === 'POST') && url.pathname.startsWith('/book/')) return await bookRoute(req, env, X());
       if (req.method === 'GET' && url.pathname.startsWith('/s/')) return await snapshotClient(req, env, X());
       if (url.pathname === '/lead') return await lead(req, env);
@@ -150,8 +153,9 @@ async function stripe(req, env) {
 
   if (deal && deal.properties.dealstage === env.STAGE_WON) return json({ skipped: 'already Client Won' });
   if (plan) {
-    await sendAndLog(env, { to: email, contact, deal, ...welcomeEmail({ firstName: first, company, plan }) });
     const lists = await clickupClient(env, company, plan);
+    const portal = deal ? await startClientBuild(env, X(), { dealId: deal.id, contactId: contact?.id, company, planKey: plan.key, lists, folderId: lists.__folder }) : '';
+    await sendAndLog(env, { to: email, contact, deal, ...welcomeEmail({ firstName: first, company, plan, portal }) });
     if (deal && env.REPORTS) await env.REPORTS.put(`cu:${deal.id}`, JSON.stringify(Object.fromEntries(Object.entries(lists).map(([k, v]) => [k, { id: v.id }]).concat([['folder', { id: lists.__folder }], ['plan', { id: plan.key }]]))));
     // carry the Crown Fitting notes into the client's ClickUp folder so delivery starts with full context
     const fit = deal && env.REPORTS ? await env.REPORTS.get(`fitans:${deal.id}`, 'json') : null;
@@ -495,7 +499,6 @@ async function clickupClient(env, company, plan) {
   const folder = await cu(env, 'POST', `/space/${env.CLICKUP_SPACE_ID}/folder`, { name: `MMA | ${company}` });
   const lists = {};
   for (const name of CLIENT_LISTS) lists[name] = await cu(env, 'POST', `/folder/${folder.id}/list`, { name });
-  for (const t of plan.deliverables) await cu(env, 'POST', `/list/${lists['Deliverables'].id}/task`, { name: t, description: `${plan.name}` });
   for (const t of ONBOARDING_TASKS) await cu(env, 'POST', `/list/${lists['Onboarding'].id}/task`, { name: t });
   Object.defineProperty(lists, '__folder', { value: folder.id, enumerable: false });
   return lists;

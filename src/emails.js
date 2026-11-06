@@ -49,11 +49,11 @@ export function paymentEmail({ firstName, company, plan }) {
   };
 }
 
-export function welcomeEmail({ firstName, company, plan }) {
+export function welcomeEmail({ firstName, company, plan, portal }) {
   const next = plan.engagement
     ? [
         ['Your intake questionnaire', 'takes about 15 minutes and gives us everything we need to hit the ground running.'],
-        ['Our kickoff', 'is booked as soon as your intake comes back.'],
+        ['Our kickoff', 'times arrive the moment your intake comes back. Pick one and you are booked.'],
         ['Work begins', 'the week of kickoff, with your first 30 day priorities.'],
       ]
     : [
@@ -72,6 +72,7 @@ export function welcomeEmail({ firstName, company, plan }) {
         p(`Your payment for <strong>${esc(plan.name)}</strong> went through, and our team could not be more excited to start working with ${esc(company) || 'you'}. Here is exactly what happens next.`) +
         steps(next) +
         button(`https://markitmike.com/intake?offer=${encodeURIComponent(plan.key)}`, 'Start your intake') +
+        (portal ? card(`<strong>Your client portal</strong><br>Progress, approvals, deliveries and meetings, all in one private place. <a href="${portal}" style="color:#108193;font-weight:700;">Open your portal</a> and bookmark it.`) : '') +
         card('<strong>Good to know</strong><br>Billing questions? Just reply to this email. You will always reach a real person on our team, never a help desk.') +
         p("Let's build something great together,"),
     }),
@@ -278,6 +279,38 @@ export function leadNudgeEmail({ firstName, second }) {
 }
 
 // the reviewed Brand Experience Snapshot, sent by Markit Mike from the review page
+export function approvalEmail({ firstName, item, note, link, portal }) {
+  return {
+    subject: `Ready for your review: ${item}`,
+    html: shell({
+      header: 'mma-email-hdr-review-v2.jpg', headerAlt: 'Ready for your review.', preheader: `${item} is ready. Approve it or send changes in one click.`,
+      body: p(`Hi ${esc(firstName) || 'there'},`) +
+        p(`Good news: <strong>${esc(item)}</strong> is ready for your review.`) +
+        (note ? card(esc(note).replace(/\n/g, '<br>')) : '') +
+        p('Take a look, then approve it or tell us what to change. Either way it takes one click, and our team picks it right up.') +
+        button(link, 'Review and approve') +
+        (portal ? p(`<a href="${portal}" style="color:#108193;font-weight:700;">See everything in your client portal</a>`) : '') +
+        p('With gratitude,'),
+    }),
+  };
+}
+
+export function deliveryEmail({ firstName, item, note, link, portal }) {
+  return {
+    subject: `Delivered: ${item}`,
+    html: shell({
+      header: 'mma-email-hdr-delivered-v2.jpg', headerAlt: 'Fresh from our team.', preheader: `${item} is here.`,
+      body: p(`Hi ${esc(firstName) || 'there'},`) +
+        p(`<strong>${esc(item)}</strong> is here.`) +
+        (note ? card(esc(note).replace(/\n/g, '<br>')) : '') +
+        button(link, 'Open it') +
+        p('Questions about anything inside? Just reply to this email and our team will walk you through it.') +
+        (portal ? p(`<a href="${portal}" style="color:#108193;font-weight:700;">Your client portal</a> keeps every delivery in one place.`) : '') +
+        p('With gratitude,'),
+    }),
+  };
+}
+
 // three held times as tappable cards, or the confirmed time
 export function timesBlock(booking, { title, intro, mins }) {
   if (!booking) return '';

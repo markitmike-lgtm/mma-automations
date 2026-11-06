@@ -83,13 +83,11 @@ export const PLANS = [
 ];
 
 export const ONBOARDING_TASKS = [
-  'Create client portal login and send access email',
-  'Connect Stripe customer to portal Billing tab',
-  'Upload signed agreement, Exhibit A and proposal to portal Documents',
+  'Review intake answers',
   'Collect logins: Google Business Profile, Yelp, website, email platform, social',
   'Connect GA4, Google profiles and ad accounts to the client dashboard',
-  'Confirm one point person and approval contact for proofs',
-  'Book kickoff workshop and recurring strategy calls',
+  'Confirm one point person and approval contact for proofs (kickoff kit)',
+  'Kickoff held and notes submitted (times are offered automatically after intake)',
 ];
 
 export const CLIENT_LISTS = ['Deliverables', 'Onboarding', 'Proofs and Approvals', 'Reporting and KPIs', 'Assets and Access'];
