@@ -4,6 +4,7 @@
 //                          thank you email, "Review and send Snapshot" task, answers kept for the Snapshot and ClickUp
 // Also here: the link and prep task at booking, "did they show?" tasks, the no show rebooking email,
 // and the day 3 and day 7 nudges for website leads who have not booked.
+import { CROWN_SCORES } from './crown.js';
 import { fittingThanksEmail, noShowEmail, leadNudgeEmail } from './emails.js';
 import { buildSnapshot } from './snapshot.js';
 import { openTimes, bookDirect, calendarReady } from './schedule.js';
@@ -14,6 +15,7 @@ const BOOKED = 'presentationscheduled';
 const PROSPECT = 'appointmentscheduled';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+export { CROWN_SCORES };
 export const FIT_SECTIONS = [
   { t: 'Why they reached out', mins: 4,
     say: "Thanks so much for making time today, {first}. Before I tell you how I'd love to use our time, I'm curious: what prompted you to book this call?",
@@ -48,10 +50,7 @@ export const FIT_SECTIONS = [
   { t: 'Pain point', mins: 3, say: 'Let me ask you the big one.', ask: ['What is the one thing about the business that keeps you up at night?'], tip: 'Pause after you ask and let the silence work. Write down their exact words, they are gold for the Snapshot.', f: [
     ['pain', 'The thing keeping them up at night', 'area', 'Capture it in their words'],
   ] },
-  { t: 'Quick scores', note: '1 is weak, 5 is strong. These feed the Brand Experience Snapshot.', tip: 'Score quietly as you listen. No need to say these out loud.', f: [
-    ['s_brand', 'Brand', 'score'], ['s_digital', 'Digital presence', 'score'], ['s_loyalty', 'Loyalty and retention', 'score'],
-    ['s_lsm', 'Local store marketing', 'score'], ['s_reviews', 'Reviews and reputation', 'score'],
-  ] },
+  { t: 'Crown scores', note: 'Score each area of the Crown Framework, 1 is weak, 5 is strong. These become the Crown scorecard on the Brand Experience Snapshot and the diagnosis in the plan walkthrough.', tip: 'Score quietly as you listen. No need to say these out loud.', f: CROWN_SCORES.map(([k, lab, hint]) => [k, lab, 'score', hint]) },
   { t: 'Decision and timing', mins: 3, say: 'Just a couple of quick questions about timing.', ask: ['Besides you, who else would weigh in on a decision like this?', 'When would you ideally want to get started?', 'Are you looking at any other options right now?'], tip: 'For budget, try: "Is there a range you had in mind?"', f: [
     ['decider', 'Who decides', 'text', 'Names and roles'],
     ['comfort', 'Budget comfort', 'chips', ['Ready now', 'Needs approval', 'Tight']],
@@ -172,7 +171,7 @@ textarea{min-height:76px;resize:vertical}input:focus,textarea:focus{outline:none
 .chips{display:flex;flex-wrap:wrap;gap:7px}.chips label{position:relative}.chips input{position:absolute;opacity:0}
 .chips span{display:inline-block;padding:8px 13px;border:1.5px solid var(--line);border-radius:999px;background:#faf8fd;font-size:13px;font-weight:600;cursor:pointer}
 .chips input:checked+span{border-color:var(--p);background:linear-gradient(110deg,var(--p),var(--t));color:#fff}.chips input:focus-visible+span{box-shadow:0 0 0 3px rgba(231,154,39,.35)}
-.score{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.score .nm{min-width:190px;font-weight:700;font-size:14px}
+.score{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.score .nm{flex:0 0 290px;max-width:100%;font-weight:700;font-size:14px}
 .bar{position:sticky;bottom:0;background:rgba(244,241,248,.96);backdrop-filter:blur(6px);border-top:1px solid var(--line);padding:12px max(16px,env(safe-area-inset-left)) calc(12px + env(safe-area-inset-bottom))}
 .bar .in{max-width:880px;margin:0 auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:space-between}
 .chk{display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600}.chk input{width:18px;height:18px;accent-color:#5D0EA6}
@@ -200,7 +199,7 @@ export function field([k, lab, type, extra], i) {
     const t = type === 'chips' ? 'radio' : 'checkbox';
     return `<div class="f"><label class="l">${esc(lab)}</label><div class="chips">${extra.map((o, j) => `<label><input type="${t}" id="${id}_${j}" name="${k}" value="${esc(o)}"><span>${esc(o)}</span></label>`).join('')}</div></div>`;
   }
-  if (type === 'score') return `<div class="f"><div class="score"><span class="nm">${esc(lab)}</span><div class="chips">${[1, 2, 3, 4, 5].map((n) => `<label><input type="radio" id="${id}_${n}" name="${k}" value="${n}"><span>${n}</span></label>`).join('')}</div></div></div>`;
+  if (type === 'score') return `<div class="f"><div class="score"><span class="nm">${esc(lab)}${extra ? `<small style="display:block;font-weight:500;font-size:12px;color:var(--mut)">${esc(extra)}</small>` : ''}</span><div class="chips">${[1, 2, 3, 4, 5].map((n) => `<label><input type="radio" id="${id}_${n}" name="${k}" value="${n}"><span>${n}</span></label>`).join('')}</div></div></div>`;
   return '';
 }
 
@@ -310,7 +309,7 @@ async function save(req, env, x, ref, contact, who, ctx) {
     { to: { id: String(dealId) }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: d }] },
   ];
   const when = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
-  const scores = ['s_brand', 's_digital', 's_loyalty', 's_lsm', 's_reviews'].map((k) => Number(a[k])).filter(Boolean);
+  const scores = CROWN_SCORES.map(([k]) => Number(a[k])).filter(Boolean);
   const avg = scores.length ? (scores.reduce((s, n) => s + n, 0) / scores.length).toFixed(1) : null;
 
   // the note first: it is the record that matters

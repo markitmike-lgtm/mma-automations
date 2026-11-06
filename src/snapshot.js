@@ -4,13 +4,16 @@
 //   client:  GET /s/<pub>         the prospect's view (printable); first open alerts the owner
 import { snapshotEmail } from './emails.js';
 import { FIT_SECTIONS } from './fitting.js';
+import { CROWN_SCORES } from './crown.js';
 import { offerTimes, shortWhen } from './schedule.js';
 
 const WORKER = 'https://mma-automations.markitmike.workers.dev';
 const LOGO = 'https://markitmike.com/wp-content/uploads/2026/11/mma-logo-reverse-tight.png';
 const AVATAR = 'https://markitmike.com/wp-content/uploads/2026/10/mm-vp-me.png';
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const SCORES = [['s_brand', 'Brand'], ['s_digital', 'Digital presence'], ['s_loyalty', 'Loyalty and retention'], ['s_lsm', 'Local store marketing'], ['s_reviews', 'Reviews and reputation']];
+const SCORES = CROWN_SCORES.map(([k, lab]) => [k, lab]);
+// Snapshots drafted before the Crown Framework switch (Nov 2026) still show their original scores
+const LEGACY_SCORES = [['s_brand', 'Brand'], ['s_digital', 'Digital presence'], ['s_loyalty', 'Loyalty and retention'], ['s_lsm', 'Local store marketing'], ['s_reviews', 'Reviews and reputation']];
 
 function token(n = 14) {
   const a = new Uint8Array(n); crypto.getRandomValues(a);
@@ -101,7 +104,7 @@ function doc(rec, mode) {
   const ed = mode === 'review';
   const E = (path, val, tag = 'span', cls = '') => `<${tag}${cls ? ` class="${cls}"` : ''}${ed ? ` data-k="${path}" contenteditable="true"` : ''}>${esc(val)}</${tag}>`;
   const date = new Date(rec.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' });
-  const scores = SCORES.filter(([k]) => rec.scores && rec.scores[k]).map(([k, lab]) => `<div class="sc"><span>${esc(lab)}</span><b><i style="width:${(rec.scores[k] / 5) * 100}%"></i></b><em>${rec.scores[k]}/5</em></div>`).join('');
+  const scores = [...SCORES, ...LEGACY_SCORES].filter(([k]) => rec.scores && rec.scores[k]).map(([k, lab]) => `<div class="sc"><span>${esc(lab)}</span><b><i style="width:${(rec.scores[k] / 5) * 100}%"></i></b><em>${rec.scores[k]}/5</em></div>`).join('');
   const obs = (d.observations || []).slice(0, 3).map((o, i) => `<div class="card"><div class="num">${i + 1}</div>${E(`observations.${i}.title`, o.title, 'h3')}<p class="k">What we saw</p>${E(`observations.${i}.saw`, o.saw, 'p')}<p class="k">Why it matters</p>${E(`observations.${i}.why`, o.why, 'p')}${o.quick_win || ed ? `<div class="qw"${!o.quick_win && ed ? ' data-empty="1"' : ''}><p class="k">Quick win</p>${E(`observations.${i}.quick_win`, o.quick_win || '', 'p')}</div>` : '<p class="plan">The full fix is in your plan.</p>'}</div>`).join('');
   const help = (d.help || []).map((h, i) => `<li><b>&#10003;</b><div>${E(`help.${i}.title`, h.title, 'strong')}${h.quote || ed ? `<small>&ldquo;${E(`help.${i}.quote`, h.quote || '')}&rdquo;</small>` : ''}</div></li>`).join('');
   const dates = (d.dates || []).map((t, i) => `<div class="dt">${E(`dates.${i}.when`, t.when, 'b')}${E(`dates.${i}.what`, t.what, 'span')}</div>`).join('');
