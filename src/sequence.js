@@ -145,6 +145,19 @@ export async function sequenceRun(env, x) {
     await env.REPORTS.put('fix:unsub-scanner-1105', '1');
   }
 
+  // one time: delete the test records Michael approved on Nov 5 (HubSpot keeps them restorable for 90 days)
+  if (!(await env.REPORTS.get('fix:cleanup-tests-1105'))) {
+    const contacts = ['585714422501','585566624456','584993589982','584902486714','584972952272','583696991936','583845960382','583781672682','583610193625','583800025814','581390299893'];
+    const out = {};
+    const run = async (label, fn) => { try { await fn(); out[label] = 'ok'; } catch (e) { out[label] = String(e.message).slice(0, 200); } };
+    await run('contacts', () => x.hs(env, 'POST', '/crm/v3/objects/contacts/batch/archive', { inputs: contacts.map((id) => ({ id })) }));
+    await run('deal', () => x.hs(env, 'POST', '/crm/v3/objects/deals/batch/archive', { inputs: [{ id: '360732371692' }] }));
+    await run('company', () => x.hs(env, 'POST', '/crm/v3/objects/companies/batch/archive', { inputs: [{ id: '358975117042' }] }));
+    await run('task', () => x.hs(env, 'POST', '/crm/v3/objects/tasks/batch/archive', { inputs: [{ id: '416832991943' }] }));
+    for (const id of contacts) if (state.contacts[id]) { delete state.contacts[id]; dirty = true; }
+    await env.REPORTS.put('fix:cleanup-tests-1105', JSON.stringify(out));
+  }
+
   // 1. new enrollments: contacts marked In Progress that we have not seen yet
   const r = await x.hs(env, 'POST', '/crm/v3/objects/contacts/search', {
     filterGroups: [{ filters: [{ propertyName: 'hs_lead_status', operator: 'EQ', value: 'IN_PROGRESS' }] }],
