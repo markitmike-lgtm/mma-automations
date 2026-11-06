@@ -1,6 +1,7 @@
 // Intake processing, scheduled jobs (meeting sync, intake reminders, Daily Crown Brief) and failure alerts.
 import { sequenceRun } from './sequence.js';
-import { holdSweep } from './schedule.js';
+import { holdSweep, offerTimes } from './schedule.js';
+import { kitForTitle, ensureKitLink } from './kits.js';
 import { ensureFittingLink, fittingFollowups, leadNudges } from './fitting.js';
 import { SECTIONS, OFFER_NAMES, NEXT_LINE, sectionsFor } from './intake-form.js';
 import { INTAKE_JS } from './intake-widget.js';
@@ -74,7 +75,12 @@ export async function intake(req, env, h, x) {
     ],
   }));
   if (optIn) steps.push(x.recordOptIn(env, contact.id, email, `Intake (${OFFER_NAMES[offer]})`));
-  steps.push(x.sendAndLog(env, { to: email, contact, deal, ...intakeDoneEmail({ firstName: answers.first, offerName: OFFER_NAMES[offer], next: NEXT_LINE[offer], answersHtml: html }) }));
+  let kickoff = null;
+  if (['platinum', 'crownjewel'].includes(offer) && env.REPORTS) {
+    try { kickoff = await offerTimes(env, x, 'kickoff', { dealId: deal?.id || '', contactId: contact.id, company, firstName: answers.first, name, email }); }
+    catch (err) { console.error('kickoff times', err.message); }
+  }
+  steps.push(x.sendAndLog(env, { to: email, contact, deal, ...intakeDoneEmail({ firstName: answers.first, offerName: OFFER_NAMES[offer], next: NEXT_LINE[offer], answersHtml: html, kickoff }) }));
   steps.push(clickupReviewTask(env, x, company, OFFER_NAMES[offer], text));
   const r = await Promise.allSettled(steps);
   const failed = r.filter((y) => y.status === 'rejected').map((y) => y.reason?.message || String(y.reason));
@@ -142,6 +148,8 @@ async function meetingSync(env, x) {
     properties: ['hs_meeting_title', 'hs_meeting_start_time', 'hs_meeting_outcome'], limit: 50,
   });
   for (const m of r.results || []) {
+    const kit = kitForTitle(m.properties.hs_meeting_title);
+    if (kit) { await kitMeeting(env, x, kit, m).catch((e) => console.error('kit meeting', e.message)); continue; }
     if (!/crown fitting/i.test(m.properties.hs_meeting_title || '')) continue;
     const a = await x.hs(env, 'GET', `/crm/v4/objects/meetings/${m.id}/associations/contacts`);
     for (const c of a.results || []) {
@@ -164,6 +172,25 @@ async function meetingSync(env, x) {
       }
       try { await ensureFittingLink(env, x, { dealId, contact, meeting: m }); } catch (e) { console.error('fitting link', e.message); }
     }
+  }
+}
+
+// Plan Walkthrough, Kickoff, Monthly Review and Check in meetings get their meeting kit link and prep task
+async function kitMeeting(env, x, kit, m) {
+  const a = await x.hs(env, 'GET', `/crm/v4/objects/meetings/${m.id}/associations/contacts`);
+  const d = await x.hs(env, 'GET', `/crm/v4/objects/meetings/${m.id}/associations/deals`).catch(() => ({}));
+  for (const c of a.results || []) {
+    const contact = await x.hs(env, 'GET', `/crm/v3/objects/contacts/${c.toObjectId}?properties=email,firstname,lastname,company`);
+    const email = contact.properties?.email;
+    if (!email || email === env.OWNER_EMAIL) continue;
+    let dealId = d.results?.[0]?.toObjectId;
+    if (!dealId) dealId = (await x.dealForEmail(env, email, true))?.deal?.id;
+    if (kit === 'walkthrough' && dealId) {
+      const deal = await x.hs(env, 'GET', `/crm/v3/objects/deals/${dealId}?properties=dealstage`).catch(() => null);
+      if (deal && x.stageRank(env, deal.properties.dealstage) < x.stageRank(env, 'contractsent')) await x.setStage(env, dealId, 'contractsent');
+    }
+    await ensureKitLink(env, x, { kit, dealId, contact, meeting: m });
+    return;
   }
 }
 

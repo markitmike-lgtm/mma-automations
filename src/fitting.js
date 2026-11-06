@@ -6,6 +6,7 @@
 // and the day 3 and day 7 nudges for website leads who have not booked.
 import { fittingThanksEmail, noShowEmail, leadNudgeEmail } from './emails.js';
 import { buildSnapshot } from './snapshot.js';
+import { openTimes, bookDirect, calendarReady } from './schedule.js';
 
 const WORKER = 'https://mma-automations.markitmike.workers.dev';
 const HELD = 'decisionmakerboughtin';
@@ -65,7 +66,7 @@ export const FIT_SECTIONS = [
 ];
 
 
-function scriptBox(sec, first) {
+export function scriptBox(sec, first) {
   const fill = (t) => esc(t).replace(/\{first\}/g, esc(first || 'there'));
   const parts = [];
   if (sec.say) parts.push(`<p class="say"><span>Say</span>${fill(sec.say)}</p>`);
@@ -91,7 +92,7 @@ export function friendlySource(src) {
 }
 
 // what we already know before the call: their website message, how they found us, outreach brand and hook
-async function contextPanel(env, x, ref, cp) {
+export async function contextPanel(env, x, ref, cp) {
   const items = [];
   try {
     const a = await x.hs(env, 'GET', `/crm/v4/objects/contacts/${ref.contactId}/associations/notes`);
@@ -149,7 +150,7 @@ export async function ensureFittingLink(env, x, { dealId, contact, meeting }) {
   return url;
 }
 
-function page(title, inner) {
+export function page(title, inner) {
   return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${esc(title)}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800;900&display=swap">
 <style>
@@ -185,12 +186,13 @@ button[disabled]{opacity:.6;cursor:wait}.saved{font-size:12px;color:var(--mut)}.
 body.noscript .script{display:none}
 .tog{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.35);padding:8px 14px;font-size:13px;font-weight:800;margin-top:12px}
 .known dl{margin:0;display:grid;gap:10px}.known dt{font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--t)}.known dd{margin:2px 0 0;font-size:15px;line-height:1.5}
+.bookw{margin-top:6px;padding:16px;border:1.5px dashed var(--g);border-radius:14px;background:#FFFBF3}.ghost{background:#fff;border:1.5px solid var(--p);color:var(--p);padding:10px 18px;font-size:14px}.tday{margin:12px 0 6px;font-size:12px;font-weight:800;color:var(--mut)}.tchip{padding:8px 13px;font-size:13px;font-weight:700;background:#faf8fd;border:1.5px solid var(--line);color:var(--ink)}.tchip.arm{background:linear-gradient(110deg,var(--p),var(--t));color:#fff;border-color:var(--p)}
 .done{text-align:center;padding:40px 24px}.done h2{justify-content:center;font-size:24px}
 @media (max-width:640px){.grid{grid-template-columns:1fr}.f.half{grid-column:1/-1}}
 </style></head><body>${inner}</body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
 }
 
-function field([k, lab, type, extra], i) {
+export function field([k, lab, type, extra], i) {
   const id = `f_${k}`;
   if (type === 'text') return `<div class="f ${/^pri/.test(k) ? '' : 'half'}"><label class="l" for="${id}">${esc(lab)}${extra ? ` <span class="help">${esc(extra)}</span>` : ''}</label><input type="text" id="${id}" name="${k}"></div>`;
   if (type === 'area') return `<div class="f"><label class="l" for="${id}">${esc(lab)}${extra ? ` <span class="help">${esc(extra)}</span>` : ''}</label><textarea id="${id}" name="${k}"></textarea></div>`;
@@ -217,12 +219,25 @@ export async function fittingRoute(req, env, x, ctx) {
   const cp = contact.properties || {};
   const who = [cp.firstname, cp.lastname].filter(Boolean).join(' ') || cp.email;
 
+  const sub = url.pathname.split('/')[3] || '';
+  if (sub === 'times' && req.method === 'GET') {
+    try { return new Response(JSON.stringify({ times: await openTimes(env, 'walkthrough') }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }); }
+    catch (e) { return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { 'Content-Type': 'application/json' } }); }
+  }
+  if (sub === 'book' && req.method === 'POST') {
+    let b = {}; try { b = await req.json(); } catch {}
+    try {
+      const r = await bookDirect(env, x, 'walkthrough', { dealId: ref.dealId, contactId: contact.id, company: cp.company || '', firstName: cp.firstname, name: who, email: cp.email }, String(b.start || ''));
+      return new Response(JSON.stringify({ ok: true, message: `Booked for ${r.text}. ${esc(cp.firstname || 'They')} will get the invite from michael@markitmike.com now, and the Snapshot email will confirm the time instead of offering new ones.` }), { headers: { 'Content-Type': 'application/json' } });
+    } catch (e) { return new Response(JSON.stringify({ error: e.message }), { status: 400, headers: { 'Content-Type': 'application/json' } }); }
+  }
   if (req.method === 'POST') return save(req, env, x, ref, contact, who, ctx);
 
   const done = await env.REPORTS.get(`fitdone:${ref.dealId}`);
   const known = await contextPanel(env, x, ref, cp);
   const mins = (m) => (m ? `<span class="mins">${m} min</span>` : '');
-  const sections = known + FIT_SECTIONS.map((s, i) => `<section class="card"><h2><b>${i + 1}</b>${esc(s.t)}${mins(s.mins)}</h2>${scriptBox(s, cp.firstname)}${s.note ? `<p class="note">${esc(s.note)}</p>` : ''}<div class="grid">${s.f.map(field).join('')}</div></section>`).join('');
+  const bookBox = calendarReady(env) ? `<div class="bookw" id="bookw"><label class="l">Book the plan walkthrough now <span class="help">45 minutes on Google Meet. The invite goes out the moment you pick.</span></label><button type="button" class="ghost" id="showt">Show open times</button><div id="tlist"></div><p class="saved" id="tmsg"></p></div>` : '';
+  const sections = known + FIT_SECTIONS.map((s, i) => `<section class="card"><h2><b>${i + 1}</b>${esc(s.t)}${mins(s.mins)}</h2>${scriptBox(s, cp.firstname)}${s.note ? `<p class="note">${esc(s.note)}</p>` : ''}<div class="grid">${s.f.map(field).join('')}</div>${i === FIT_SECTIONS.length - 1 ? bookBox : ''}</section>`).join('');
   const when = ref.start ? new Date(ref.start).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' PT' : '';
   return page(`Crown Fitting: ${who}`, `<div class="top"><div class="in"><div class="eb">CROWN FITTING NOTES</div><h1>${esc(who)}${cp.company ? ' · ' + esc(cp.company) : ''}</h1><p class="sub">${when ? esc(when) + '. ' : ''}${done ? '<b>Already submitted.</b> Submitting again adds a new note but does not resend the thank you email.' : 'Answers save in this browser as you type. Click Submit when the call ends.'}</p><button type="button" class="tog" id="tog">Hide script</button></div></div>
 <form id="fit" class="wrap" novalidate>${sections}</form>
@@ -237,6 +252,12 @@ var tog=document.getElementById('tog');function setS(h){document.body.classList.
 try{setS(localStorage.getItem('mmafit-noscript')==='1');}catch(e){}
 tog.addEventListener('click',function(){var h=!document.body.classList.contains('noscript');setS(h);try{localStorage.setItem('mmafit-noscript',h?'1':'0');}catch(e){}});
 var t;f.addEventListener('input',function(){clearTimeout(t);t=setTimeout(function(){try{localStorage.setItem(KEY,JSON.stringify(data()));saved.textContent='Saved in this browser';}catch(e){}},400);});
+var st=document.getElementById('showt');if(st){var tl=document.getElementById('tlist'),tm=document.getElementById('tmsg');
+st.addEventListener('click',function(){st.disabled=true;st.textContent='Loading times...';fetch(location.pathname+'/times').then(function(r){return r.json();}).then(function(d){st.style.display='none';if(d.error||!d.times||!d.times.length){tm.textContent=d.error||'No open times found in the next two weeks.';return;}
+var by={};d.times.forEach(function(t){(by[t.day]=by[t.day]||[]).push(t);});tl.innerHTML=Object.keys(by).slice(0,6).map(function(day){return '<p class="tday">'+day+'</p><div class="chips">'+by[day].map(function(t){return '<button type="button" class="tchip" data-s="'+t.start+'" data-l="'+day+' at '+t.time+'">'+t.time+'</button>';}).join('')+'</div>';}).join('');}).catch(function(){st.disabled=false;st.textContent='Show open times';tm.textContent='Could not load times. Try again.';});});
+tl&&tl.addEventListener('click',function(e){var b=e.target.closest('.tchip');if(!b)return;if(b.classList.contains('arm')){tl.querySelectorAll('.tchip').forEach(function(c){c.disabled=true;});tm.textContent='Booking...';
+fetch(location.pathname+'/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({start:b.getAttribute('data-s')})}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error);return d;});}).then(function(d){tl.innerHTML='';tm.innerHTML='<b style="color:#108193">'+d.message+'</b>';}).catch(function(er){tm.textContent=er.message+'. Pick another time.';tl.querySelectorAll('.tchip').forEach(function(c){c.disabled=false;});});return;}
+tl.querySelectorAll('.tchip.arm').forEach(function(c){c.classList.remove('arm');c.textContent=c.getAttribute('data-l').split(' at ')[1];});b.classList.add('arm');b.textContent='Click again to book '+b.getAttribute('data-l');tm.textContent='';});}
 go.addEventListener('click',function(){err.hidden=true;go.disabled=true;go.textContent='Submitting...';
 fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answers:data(),thanks:document.getElementById('thanks').checked})})
 .then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Something went wrong');return d;});})

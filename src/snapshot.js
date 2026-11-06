@@ -127,6 +127,7 @@ function walkthroughBlock(rec, mode) {
   const b = rec.booking;
   if (mode === 'review' && !b) return '<p class="wt-note">When you send, 3 walkthrough times are held on your calendar and offered here and in the email.</p>';
   if (!b) return '';
+  if (b.booked) return `<p class="wt-k">Your plan walkthrough</p><p><b>${esc(b.booked.text)}</b> on Google Meet. Your invite came from michael@markitmike.com.</p>`;
   const live = (b.slots || []).filter((s) => new Date(s.start).getTime() > Date.now());
   const btns = live.map((s, i) => { const w = shortWhen(s.start); return `<a class="slotbtn" href="${b.url}?s=${(b.slots || []).indexOf(s)}"><b>${esc(w.day)}</b><span>${esc(w.time)} &middot; ${esc(w.et)}</span></a>`; }).join('');
   return `${btns ? `<p class="wt-k">Times saved for you</p><div class="slotrow">${btns}</div>` : ''}<a class="cta" href="${b.url}">${btns ? 'See all times' : 'Book your plan walkthrough'}</a>`;

@@ -132,6 +132,12 @@ function pickThree(slots, type) {
 // who: { dealId, contactId, company, firstName, name, email }
 export async function offerTimes(env, x, type, who) {
   const m = MEETINGS[type];
+  if (who.dealId) {
+    const prevTok = await env.REPORTS.get(`bookdeal:${type}:${who.dealId}`);
+    const prev = prevTok && (await env.REPORTS.get(`book:${prevTok}`, 'json'));
+    if (prev && prev.status === 'booked' && new Date(prev.booked.start).getTime() > Date.now()) return { tok: prevTok, url: `${WORKER}/book/${prevTok}`, slots: [], booked: { ...prev.booked, ...shortWhen(prev.booked.start), text: whenText(prev.booked.start) } };
+    if (prev && prev.status === 'offered') { await releaseHolds(env, prev); prev.status = 'replaced'; await env.REPORTS.put(`book:${prevTok}`, JSON.stringify(prev)); }
+  }
   const tok = token();
   const rec = { tok, type, ...who, dealId: String(who.dealId || ''), contactId: String(who.contactId || ''), slots: [], status: 'offered', offeredAt: Date.now() };
   if (calendarReady(env)) {
@@ -142,6 +148,7 @@ export async function offerTimes(env, x, type, who) {
     }
   }
   await env.REPORTS.put(`book:${tok}`, JSON.stringify(rec));
+  if (who.dealId) await env.REPORTS.put(`bookdeal:${type}:${who.dealId}`, tok);
   const open = (await env.REPORTS.get('book:open', 'json')) || [];
   open.push(tok); await env.REPORTS.put('book:open', JSON.stringify(open.slice(-300)));
   return { tok, url: `${WORKER}/book/${tok}`, slots: rec.slots.map((s, i) => ({ ...s, url: `${WORKER}/book/${tok}?s=${i}`, ...shortWhen(s.start) })) };
@@ -178,6 +185,26 @@ function bizDaysSince(ts) {
   let n = 0; let t = ts;
   while ((t += 864e5) <= Date.now()) { const p = ptParts(new Date(t)); if (p.wd !== 'Sat' && p.wd !== 'Sun' && !HOLIDAYS.includes(ymd(p))) n++; }
   return n;
+}
+
+// Michael books it live on a call (from a notes page): no holds, straight to the invite
+export async function openTimes(env, type) {
+  if (!calendarReady(env)) return [];
+  return (await openSlots(env, type, { limit: 40 })).map((s) => ({ start: s.start, ...shortWhen(s.start) }));
+}
+export async function bookDirect(env, x, type, who, start) {
+  const slot = (await openSlots(env, type, { limit: 80 })).find((s) => s.start === start);
+  if (!slot) throw new Error('That time is no longer open');
+  if (who.dealId) {
+    const prevTok = await env.REPORTS.get(`bookdeal:${type}:${who.dealId}`);
+    const prev = prevTok && (await env.REPORTS.get(`book:${prevTok}`, 'json'));
+    if (prev && prev.status === 'offered') { await releaseHolds(env, prev); prev.status = 'replaced'; await env.REPORTS.put(`book:${prevTok}`, JSON.stringify(prev)); }
+  }
+  const tok = token();
+  const rec = { tok, type, ...who, dealId: String(who.dealId || ''), contactId: String(who.contactId || ''), slots: [], status: 'offered', offeredAt: Date.now(), live: true };
+  if (who.dealId) await env.REPORTS.put(`bookdeal:${type}:${who.dealId}`, tok);
+  await confirmBooking(env, x, rec, slot, null, { quiet: true });
+  return { tok, text: whenText(slot.start) };
 }
 
 /* ---------- the client's picker ---------- */
@@ -258,7 +285,7 @@ export async function bookRoute(req, env, x) {
   return page(`Pick your ${m.label} time`, header(m, `${m.mins} minutes on Google Meet. ${m.about}`) + picked + held + more + sig);
 }
 
-async function confirmBooking(env, x, rec, slot, holdId) {
+async function confirmBooking(env, x, rec, slot, holdId, { quiet = false } = {}) {
   const m = MEETINGS[rec.type];
   const title = `${m.title} with Markit Mike Agency${rec.company ? ' | ' + rec.company : ''}`;
   const description = `${m.about}\n\nNeed to change the time? Reply to this invite or any of our emails, or call (714) 919 9469.\n\nMarkit Mike Agency | markitmike.com`;
@@ -279,5 +306,5 @@ async function confirmBooking(env, x, rec, slot, holdId) {
   }
   const when = whenText(slot.start);
   const dealUrl = rec.dealId ? `https://app-na2.hubspot.com/contacts/246716405/record/0-3/${rec.dealId}` : `https://app-na2.hubspot.com/contacts/246716405/record/0-1/${rec.contactId}`;
-  if (x.sendRaw) await x.sendRaw(env, { to: env.OWNER_EMAIL, subject: `Booked: ${m.title} with ${rec.name || rec.company}, ${shortWhen(slot.start).day}`, html: `<div style="font-family:Arial,Helvetica,sans-serif;color:#1B1030;max-width:600px;"><p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:2px;color:#5D0EA6;">BOOKED</p><p style="margin:0 0 12px;font-size:20px;font-weight:800;">${esc(rec.name || '')}${rec.company ? ' at ' + esc(rec.company) : ''} picked a ${esc(m.label)} time</p><p style="font-size:15px;">${esc(when)}. The invite went out from michael@markitmike.com${holdId ? ' and the other held times were released' : ''}. Your meeting kit link arrives as a HubSpot task.</p><p><a href="${dealUrl}" style="display:inline-block;padding:11px 18px;border-radius:8px;background:#5D0EA6;color:#fff;font-weight:700;text-decoration:none;">Open in HubSpot</a></p></div>` }).catch((e) => console.error('booked alert', e.message));
+  if (x.sendRaw && !quiet) await x.sendRaw(env, { to: env.OWNER_EMAIL, subject: `Booked: ${m.title} with ${rec.name || rec.company}, ${shortWhen(slot.start).day}`, html: `<div style="font-family:Arial,Helvetica,sans-serif;color:#1B1030;max-width:600px;"><p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:2px;color:#5D0EA6;">BOOKED</p><p style="margin:0 0 12px;font-size:20px;font-weight:800;">${esc(rec.name || '')}${rec.company ? ' at ' + esc(rec.company) : ''} picked a ${esc(m.label)} time</p><p style="font-size:15px;">${esc(when)}. The invite went out from michael@markitmike.com${holdId ? ' and the other held times were released' : ''}. Your meeting kit link arrives as a HubSpot task.</p><p><a href="${dealUrl}" style="display:inline-block;padding:11px 18px;border-radius:8px;background:#5D0EA6;color:#fff;font-weight:700;text-decoration:none;">Open in HubSpot</a></p></div>` }).catch((e) => console.error('booked alert', e.message));
 }

@@ -13,6 +13,7 @@ import { unsubscribeRoute, seenRoute, sequenceSummary } from './sequence.js';
 import { fittingRoute, answersToMarkdown } from './fitting.js';
 import { snapshotReview, snapshotClient } from './snapshot.js';
 import { bookRoute } from './schedule.js';
+import { kitRoute } from './kits.js';
 
 const trimEnv = (rawEnv) => Object.fromEntries(Object.entries(rawEnv).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
 // shared helpers handed to ops.js
@@ -38,6 +39,7 @@ export default {
       if (req.method === 'GET' && url.pathname === '/sequence') return json(await sequenceSummary(env));
       if (url.pathname.startsWith('/fitting/')) return await fittingRoute(req, env, X(), ctx);
       if (url.pathname.startsWith('/snapshot/')) return await snapshotReview(req, env, X());
+      if (url.pathname.startsWith('/kit/')) return await kitRoute(req, env, X(), ctx);
       if ((req.method === 'GET' || req.method === 'POST') && url.pathname.startsWith('/book/')) return await bookRoute(req, env, X());
       if (req.method === 'GET' && url.pathname.startsWith('/s/')) return await snapshotClient(req, env, X());
       if (url.pathname === '/lead') return await lead(req, env);
@@ -150,6 +152,7 @@ async function stripe(req, env) {
   if (plan) {
     await sendAndLog(env, { to: email, contact, deal, ...welcomeEmail({ firstName: first, company, plan }) });
     const lists = await clickupClient(env, company, plan);
+    if (deal && env.REPORTS) await env.REPORTS.put(`cu:${deal.id}`, JSON.stringify(Object.fromEntries(Object.entries(lists).map(([k, v]) => [k, { id: v.id }]).concat([['folder', { id: lists.__folder }], ['plan', { id: plan.key }]]))));
     // carry the Crown Fitting notes into the client's ClickUp folder so delivery starts with full context
     const fit = deal && env.REPORTS ? await env.REPORTS.get(`fitans:${deal.id}`, 'json') : null;
     if (fit && lists?.Onboarding?.id) {
@@ -494,6 +497,7 @@ async function clickupClient(env, company, plan) {
   for (const name of CLIENT_LISTS) lists[name] = await cu(env, 'POST', `/folder/${folder.id}/list`, { name });
   for (const t of plan.deliverables) await cu(env, 'POST', `/list/${lists['Deliverables'].id}/task`, { name: t, description: `${plan.name}` });
   for (const t of ONBOARDING_TASKS) await cu(env, 'POST', `/list/${lists['Onboarding'].id}/task`, { name: t });
+  Object.defineProperty(lists, '__folder', { value: folder.id, enumerable: false });
   return lists;
 }
 

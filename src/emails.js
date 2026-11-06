@@ -144,7 +144,7 @@ export function ownerLeadEmail({ name, email, phone, company, message, page, dea
   };
 }
 
-export function intakeDoneEmail({ firstName, offerName, next, answersHtml }) {
+export function intakeDoneEmail({ firstName, offerName, next, answersHtml, kickoff }) {
   return {
     subject: 'Intake received. Thank you!',
     html: shell({
@@ -154,6 +154,7 @@ export function intakeDoneEmail({ firstName, offerName, next, answersHtml }) {
       body:
         p(`Hi ${esc(firstName) || 'there'},`) +
         p(`Thank you for completing your intake. Our team is reviewing your answers now, and here is what happens next: ${esc(next)}.`) +
+        timesBlock(kickoff, { title: 'Your kickoff workshop', intro: 'Next up is your 60 minute kickoff workshop on Google Meet, where we confirm goals and dates, choose your first Builds and set the roadmap.' }) +
         p('Have a logo, brand guide, photos or reports to share? Just reply to this email and attach them. We will add them to your project folder.') +
         label('A copy of your answers') +
         card(answersHtml) +
@@ -277,10 +278,24 @@ export function leadNudgeEmail({ firstName, second }) {
 }
 
 // the reviewed Brand Experience Snapshot, sent by Markit Mike from the review page
+// three held times as tappable cards, or the confirmed time
+export function timesBlock(booking, { title, intro, mins }) {
+  if (!booking) return '';
+  if (booking.booked) return label(title) + p(`We are all set for <strong>${esc(booking.booked.text)}</strong> on Google Meet. Your calendar invite came from michael@markitmike.com.`);
+  const slots = booking.slots || [];
+  if (!slots.length) return label(title) + p(`${intro} Reply to this email with a few times that work and we will send the invite.`);
+  const rows = slots.map((s) => `<tr><td style="padding:0 0 10px 0;"><a href="${s.url}" style="display:block;border:2px solid #E79A27;border-radius:12px;padding:12px 16px;text-decoration:none;color:#1B1030;font-family:Montserrat,Arial,Helvetica,sans-serif;"><span style="font-size:16px;font-weight:800;">${esc(s.day)}</span><br><span style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#6B6280;">${esc(s.time)} &middot; ${esc(s.et)}</span></a></td></tr>`).join('');
+  return label(title) + p(`${intro} We are holding these times for you. Pick the one that works and your invite goes out right away:`) +
+    `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 8px 0;">${rows}</table>` +
+    p(`<a href="${booking.url}" style="color:#108193;font-weight:700;">None of these work? See more open times</a>`);
+}
+
 export function snapshotEmail({ firstName, company, link, booking }) {
   const slots = (booking && booking.slots) || [];
   const slotRows = slots.map((s) => `<tr><td style="padding:0 0 10px 0;"><a href="${s.url}" style="display:block;border:2px solid #E79A27;border-radius:12px;padding:12px 16px;text-decoration:none;color:#1B1030;font-family:Montserrat,Arial,Helvetica,sans-serif;"><span style="font-size:16px;font-weight:800;">${esc(s.day)}</span><br><span style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#6B6280;">${esc(s.time)} &middot; ${esc(s.et)}</span></a></td></tr>`).join('');
-  const times = slots.length
+  const times = booking && booking.booked
+    ? label('Your plan walkthrough') + p(`We are all set for <strong>${esc(booking.booked.text)}</strong> on Google Meet. Your calendar invite came from michael@markitmike.com. Feel free to invite anyone who should weigh in.`)
+    : slots.length
     ? label('Your plan walkthrough') +
       p('The next step is a 45 minute plan walkthrough on Google Meet, where we go through exactly what to do first and answer every question. We are holding these times for you. Pick the one that works and your invite goes out right away:') +
       `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 8px 0;">${slotRows}</table>` +
