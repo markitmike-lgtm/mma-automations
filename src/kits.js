@@ -116,7 +116,9 @@ function token() {
 // called from meetingSync for every booked meeting whose title matches a kit
 export async function ensureKitLink(env, x, { kit, dealId, contact, meeting }) {
   if (!env.REPORTS || !KITS[kit]) return null;
-  const key = `kitmeet:${meeting?.id || `${kit}:${dealId}`}`;
+  // one link per meeting, even when calendar sync logs the same meeting a second time
+  const startMs = meeting?.properties?.hs_meeting_start_time ? new Date(meeting.properties.hs_meeting_start_time).getTime() : '';
+  const key = `kitmeet:${kit}:${dealId || contact.id}:${startMs || meeting?.id || 'x'}`;
   const existing = await env.REPORTS.get(key);
   if (existing) return `${WORKER}/kit/${existing}`;
   const tok = token();
