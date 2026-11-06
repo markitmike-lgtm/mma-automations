@@ -120,6 +120,15 @@ export async function scheduleTimeline(env, x, dealId, start) {
 export async function fulfillSweep(env, x) {
   if (!env.REPORTS) return;
   let budget = 30; // ClickUp calls this run, to stay well inside the per run limit
+  // one time (approved Nov 5): delete automatic sender contacts and one test, relabel non lead people as Other
+  if (!(await env.REPORTS.get('fix:junk-1105'))) {
+    const out = {};
+    const junk = ['586329534148', '586018102006', '585885191919', '585670140609', '585694842563', '584900615895', '584909587152', '584956911325', '584326419185', '584312193774', '583794287353', '583616723675', '583611992762', '583558803189', '583426820836', '583489415878', '583417079527', '583406460620', '583270615740', '583156446941', '583131520699', '583064019672', '583063766718', '583026556654', '583028289244', '583038311119', '583028143836', '583020321478', '583013946082', '582989488841', '582916538060', '582752129733', '582879872728', '582631920323', '582504114920', '582445800169', '582419785444', '582399088323', '582381739723', '582150767337', '581941468902', '581418115833', '580076023498', '579987502825', '579957990119', '579854826189', '579903729347', '579671909087', '579771258572', '579778481905', '579776272062', '579617404638', '579549973201', '579674898152', '585717826269'];
+    const people = ['586064390904', '585666237145', '584824422107', '584326246116', '583624220366', '583577482987', '583016344250', '582993233618', '516240571088', '585959189228', '582905845476'];
+    try { await x.hs(env, 'POST', '/crm/v3/objects/contacts/batch/archive', { inputs: junk.map((id) => ({ id })) }); out.deleted = junk.length; } catch (e) { out.deleted = e.message.slice(0, 200); }
+    try { await x.hs(env, 'POST', '/crm/v3/objects/contacts/batch/update', { inputs: people.map((id) => ({ id, properties: { lifecyclestage: '' } })) }); await x.hs(env, 'POST', '/crm/v3/objects/contacts/batch/update', { inputs: people.map((id) => ({ id, properties: { lifecyclestage: 'other' } })) }); out.relabeled = people.length; } catch (e) { out.relabeled = e.message.slice(0, 200); }
+    await env.REPORTS.put('fix:junk-1105', JSON.stringify(out));
+  }
   if (!(await env.REPORTS.get('fix:cu-test-folder'))) { await x.cu(env, 'DELETE', '/folder/1000280000018946').catch((e) => console.error('test folder', e.message)); await env.REPORTS.put('fix:cu-test-folder', '1'); budget--; }
   for (const dealId of (await env.REPORTS.get('cujobs', 'json')) || []) {
     if (budget <= 0) break;
