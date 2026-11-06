@@ -4,6 +4,7 @@
 //   client:  GET /s/<pub>         the prospect's view (printable); first open alerts the owner
 import { snapshotEmail } from './emails.js';
 import { FIT_SECTIONS } from './fitting.js';
+import { offerTimes, shortWhen } from './schedule.js';
 
 const WORKER = 'https://mma-automations.markitmike.workers.dev';
 const LOGO = 'https://markitmike.com/wp-content/uploads/2026/11/mma-logo-reverse-tight.png';
@@ -117,12 +118,22 @@ ${scores ? `<section class="sec"><p class="label">Your Crown scorecard</p><div c
 <section class="sec two"><div><p class="label">What you told us you want help with</p><ul class="help">${help}</ul></div>
 <div>${dates ? `<p class="label">Key dates you mentioned</p><div class="dates">${dates}</div>` : ''}${att ? `<p class="label">Who should join the walkthrough</p><ul class="att">${att}</ul>` : ''}</div></section>
 ${d.recommendation && (d.recommendation.offer || ed) ? `<section class="sec rec"><p class="label">Our recommendation</p><h3>${E('recommendation.offer', d.recommendation.offer || '')}</h3>${E('recommendation.why', d.recommendation.why || '', 'p')}</section>` : ''}
-<section class="sec next"><p class="label">Where we go from here</p>${E('next', d.next, 'p')}<a class="cta" href="https://markitmike.com/crownfitting">Book your plan walkthrough</a></section>
+<section class="sec next"><p class="label">Where we go from here</p>${E('next', d.next, 'p')}${walkthroughBlock(rec, mode)}</section>
 <footer class="sig"><img src="${AVATAR}" alt="Markit Mike"><div><b>Markit Mike</b><span>Markit Mike Agency&trade;</span><span>(714) 919 9469 &middot; team@markitmike.com &middot; markitmike.com</span></div></footer>
 </article>`;
 }
 
+function walkthroughBlock(rec, mode) {
+  const b = rec.booking;
+  if (mode === 'review' && !b) return '<p class="wt-note">When you send, 3 walkthrough times are held on your calendar and offered here and in the email.</p>';
+  if (!b) return '';
+  const live = (b.slots || []).filter((s) => new Date(s.start).getTime() > Date.now());
+  const btns = live.map((s, i) => { const w = shortWhen(s.start); return `<a class="slotbtn" href="${b.url}?s=${(b.slots || []).indexOf(s)}"><b>${esc(w.day)}</b><span>${esc(w.time)} &middot; ${esc(w.et)}</span></a>`; }).join('');
+  return `${btns ? `<p class="wt-k">Times saved for you</p><div class="slotrow">${btns}</div>` : ''}<a class="cta" href="${b.url}">${btns ? 'See all times' : 'Book your plan walkthrough'}</a>`;
+}
+
 const CSS = `
+.slotrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:6px 0 16px}.slotbtn{display:block;background:#fff;border:2px solid #E79A27;border-radius:12px;padding:12px 14px;text-decoration:none;color:#1B1030}.slotbtn b{display:block;font:800 15px Montserrat,Arial,sans-serif}.slotbtn span{font-size:13px;color:#6B6280}.slotbtn:hover{background:#FFF8EC}.wt-k{font:800 12px Montserrat,Arial,sans-serif;letter-spacing:2px;text-transform:uppercase;color:#5D0EA6;margin:14px 0 4px}.wt-note{font-size:13px;opacity:.8;margin-top:10px}
 :root{--gold:#E79A27;--teal:#108193;--purple:#5D0EA6;--ink:#1B1030;--body:#3A3646;--soft:#F6F2FB;--line:#E7E0F0;--bg:#EFEAF6}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,Arial,sans-serif;color:var(--body);font-size:15px;line-height:1.5}
 .snap{max-width:860px;margin:24px auto 60px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 20px 60px rgba(43,15,99,.14)}
@@ -186,11 +197,15 @@ export async function snapshotReview(req, env, x) {
     rec.updated = Date.now();
     let msg = 'Saved.';
     if (b.action === 'send') {
-      const contact = await x.hs(env, 'GET', `/crm/v3/objects/contacts/${rec.contactId}?properties=email,firstname`);
+      const contact = await x.hs(env, 'GET', `/crm/v3/objects/contacts/${rec.contactId}?properties=email,firstname,lastname`);
       const email = contact.properties?.email;
       if (!email) return new Response(JSON.stringify({ error: 'This contact has no email address in HubSpot' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
       await env.REPORTS.put(`snappub:${rec.pub}`, tok);
-      await x.sendAndLog(env, { to: email, contact, deal: { id: rec.dealId }, ...snapshotEmail({ firstName: contact.properties.firstname, company: rec.company, link: `${WORKER}/s/${rec.pub}` }) });
+      if (!rec.booking) {
+        try { rec.booking = await offerTimes(env, x, 'walkthrough', { dealId: rec.dealId, contactId: rec.contactId, company: rec.company, firstName: contact.properties.firstname, name: [contact.properties.firstname, contact.properties.lastname].filter(Boolean).join(' ') || rec.who, email }); }
+        catch (e) { console.error('offer walkthrough times', e.message); }
+      }
+      await x.sendAndLog(env, { to: email, contact, deal: { id: rec.dealId }, ...snapshotEmail({ firstName: contact.properties.firstname, company: rec.company, link: `${WORKER}/s/${rec.pub}`, booking: rec.booking }) });
       rec.status = 'sent'; rec.sentAt = Date.now();
       await x.hs(env, 'POST', '/crm/v3/objects/notes', { properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Brand Experience Snapshot sent</b> to ${esc(email)}.</p><p><a href="${WORKER}/s/${rec.pub}">Client view</a> &middot; <a href="${WORKER}/snapshot/${tok}">Edit view</a></p>` }, associations: [{ to: { id: rec.contactId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }, { to: { id: rec.dealId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 214 }] }] }).catch((e) => console.error('snap note', e.message));
       if (rec.taskId) await x.hs(env, 'PATCH', `/crm/v3/objects/tasks/${rec.taskId}`, { properties: { hs_task_status: 'COMPLETED' } }).catch(() => {});

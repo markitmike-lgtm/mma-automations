@@ -1,5 +1,6 @@
 // Intake processing, scheduled jobs (meeting sync, intake reminders, Daily Crown Brief) and failure alerts.
 import { sequenceRun } from './sequence.js';
+import { holdSweep } from './schedule.js';
 import { ensureFittingLink, fittingFollowups, leadNudges } from './fitting.js';
 import { SECTIONS, OFFER_NAMES, NEXT_LINE, sectionsFor } from './intake-form.js';
 import { INTAKE_JS } from './intake-widget.js';
@@ -127,7 +128,7 @@ export async function alertOwner(env, where, detail) {
 
 /* ---------------- scheduled jobs ---------------- */
 export async function scheduled(event, env, x) {
-  const jobs = event.cron === env.BRIEF_CRON ? [['intake reminders', intakeReminders], ['lead nudges', leadNudges], ['daily brief', dailyBrief], ['meeting sync', meetingSync]] : [['meeting sync', meetingSync], ['cold sequence', sequenceRun], ['crown fitting follow ups', fittingFollowups]];
+  const jobs = event.cron === env.BRIEF_CRON ? [['intake reminders', intakeReminders], ['lead nudges', leadNudges], ['daily brief', dailyBrief], ['meeting sync', meetingSync]] : [['meeting sync', meetingSync], ['cold sequence', sequenceRun], ['crown fitting follow ups', fittingFollowups], ['calendar holds', holdSweep]];
   for (const [name, fn] of jobs) {
     try { await fn(env, x); } catch (err) { console.error(name, err.stack || err); await alertOwner(env, name, String(err.message || err)); }
   }

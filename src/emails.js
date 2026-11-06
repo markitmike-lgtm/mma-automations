@@ -277,18 +277,27 @@ export function leadNudgeEmail({ firstName, second }) {
 }
 
 // the reviewed Brand Experience Snapshot, sent by Markit Mike from the review page
-export function snapshotEmail({ firstName, company, link }) {
+export function snapshotEmail({ firstName, company, link, booking }) {
+  const slots = (booking && booking.slots) || [];
+  const slotRows = slots.map((s) => `<tr><td style="padding:0 0 10px 0;"><a href="${s.url}" style="display:block;border:2px solid #E79A27;border-radius:12px;padding:12px 16px;text-decoration:none;color:#1B1030;font-family:Montserrat,Arial,Helvetica,sans-serif;"><span style="font-size:16px;font-weight:800;">${esc(s.day)}</span><br><span style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#6B6280;">${esc(s.time)} &middot; ${esc(s.et)}</span></a></td></tr>`).join('');
+  const times = slots.length
+    ? label('Your plan walkthrough') +
+      p('The next step is a 45 minute plan walkthrough on Google Meet, where we go through exactly what to do first and answer every question. We are holding these times for you. Pick the one that works and your invite goes out right away:') +
+      `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:0 0 8px 0;">${slotRows}</table>` +
+      p(`<a href="${booking.url}" style="color:#108193;font-weight:700;">None of these work? See more open times</a>`) +
+      p('Feel free to invite anyone who should weigh in.')
+    : p('The next step is a short plan walkthrough, where we go through exactly what to do first and answer every question. Reply to this email with a few times that work and we will send the invite.');
   return {
     subject: `Your Brand Experience Snapshot${company ? ' for ' + company : ''}`,
     html: shell({
       header: 'mma-email-hdr-snapshot-v2.jpg',
       headerAlt: 'Thank you. Your Brand Experience Snapshot is here.',
-      preheader: 'What we heard, three observations and where we go from here.',
+      preheader: slots.length ? 'What we heard, three observations, and three walkthrough times saved for you.' : 'What we heard, three observations and where we go from here.',
       body:
         p(`Hi ${esc(firstName) || 'there'},`) +
         p('Thank you again for your time. As promised, here is your Brand Experience Snapshot: what we heard, three observations about how your brand shows up today, and where we go from here.') +
         button(link, 'View my Snapshot') +
-        p('The next step is a short plan walkthrough, where we go through exactly what to do first and answer every question. If you have not picked a time yet, you can grab one right from your Snapshot.') +
+        times +
         p('With gratitude,'),
     }),
   };
