@@ -189,8 +189,10 @@ function setPath(obj, path, val) {
 
 // GET and POST /snapshot/<tok>: the review page
 export async function snapshotReview(req, env, x) {
-  const tok = new URL(req.url).pathname.split('/')[2] || '';
-  if (!/^[a-z0-9]{10,24}$/.test(tok)) return new Response('Not found', { status: 404 });
+  const raw = new URL(req.url).pathname.split('/')[2] || '';
+  // older HubSpot tasks glued the next word onto the link (".../abc123Click"); review tokens are 14 characters
+  const tok = /^[a-z0-9]{10,24}$/.test(raw) ? raw : (raw.match(/^[a-z0-9]{14}(?=[A-Z])/) || [''])[0];
+  if (!tok) return new Response('Not found', { status: 404 });
   const rec = await env.REPORTS.get(`snap:${tok}`, 'json');
   // A brand new draft can take up to a minute to reach every Cloudflare location, so a miss right after
   // the HubSpot task appears is usually just that delay: show a friendly page that refreshes itself.

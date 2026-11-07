@@ -184,11 +184,22 @@ async function stripeGet(env, path) {
 }
 
 /* ---------------- HubSpot ---------------- */
+function taskHtml(t) {
+  const e = (x) => x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(t).split('\n').map((line) => `<p>${e(line).replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u.replace(/"/g, '&quot;')}">${u}</a>`)}</p>`).join('');
+}
+
 async function hs(env, method, path, body) {
   const isRead = method === 'GET' || path.includes('/search') || path.includes('/batch/read');
   // one person team for now: every new contact, deal and task is assigned to the owner
   if (method === 'POST' && env.OWNER_ID && /^\/crm\/v3\/objects\/(contacts|deals|tasks)$/.test(path) && body && body.properties && !body.properties.hubspot_owner_id) {
     body = { ...body, properties: { ...body.properties, hubspot_owner_id: env.OWNER_ID } };
+  }
+  // HubSpot shows task notes as HTML and drops plain line breaks, so a link at the end of a line
+  // ran into the next word (".../snapshot/abc123Click") and opened as Not found. Send plain text
+  // task bodies as HTML: real line breaks and real links.
+  if (method === 'POST' && /^\/crm\/v3\/objects\/tasks$/.test(path) && body?.properties?.hs_task_body && !/<[a-z][^>]*>/i.test(body.properties.hs_task_body)) {
+    body = { ...body, properties: { ...body.properties, hs_task_body: taskHtml(body.properties.hs_task_body) } };
   }
   if (env.DRY_RUN === 'true' && !isRead) {
     console.log('DRY RUN', method, path, JSON.stringify(body));

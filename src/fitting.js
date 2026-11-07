@@ -211,7 +211,9 @@ async function lookup(env, tok) {
 
 export async function fittingRoute(req, env, x, ctx) {
   const url = new URL(req.url);
-  const tok = url.pathname.split('/')[2] || '';
+  const raw = url.pathname.split('/')[2] || '';
+  // older HubSpot tasks glued the next word onto the link (".../abc123Submit"); notes tokens are 12 characters
+  const tok = /^[a-z0-9]{8,24}$/.test(raw) ? raw : (raw.match(/^[a-z0-9]{12}(?=[A-Z])/) || [''])[0];
   const ref = await lookup(env, tok);
   if (!ref) return page('Not found', '<div class="wrap" style="margin-top:60px"><div class="card done"><h2>This link is not valid</h2><p>Open the Crown Fitting Notes link from the deal in HubSpot.</p></div></div>');
   const contact = await x.hs(env, 'GET', `/crm/v3/objects/contacts/${ref.contactId}?properties=email,firstname,lastname,company`);
