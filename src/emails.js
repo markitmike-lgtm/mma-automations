@@ -342,11 +342,12 @@ export function snapshotEmail({ firstName, company, link, booking }) {
     html: shell({
       header: 'mma-email-hdr-snapshot-v2.jpg',
       headerAlt: 'Thank you. Your Brand Experience Snapshot is here.',
-      preheader: slots.length ? 'What we heard, three observations, and three walkthrough times saved for you.' : 'What we heard, three observations and where we go from here.',
+      preheader: slots.length ? 'What we heard, the first opportunity we spotted, and three walkthrough times saved for you.' : 'What we heard, the first opportunity we spotted, and where we go from here.',
       body:
         p(`Hi ${esc(firstName) || 'there'},`) +
-        p('Thank you again for your time. As promised, here is your Brand Experience Snapshot: what we heard, three observations about how your brand shows up today, and where we go from here.') +
-        button(link, 'View my Snapshot') +
+        p('Thank you again for your time. As promised, here is a preview of your Brand Experience Snapshot: what we heard, and the first opportunity we spotted, with a quick win you can use right away.') +
+        button(link, 'View my Snapshot preview') +
+        p('In your plan walkthrough, we will reveal the full Snapshot: your Crown scorecard, everything else we found, and the 90 day plan we recommend.') +
         times +
         p('With gratitude,'),
     }),
