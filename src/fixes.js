@@ -15,6 +15,7 @@ const stars = (x, y, n, on = 5) => [...Array(n)].map((_, i) => `<path transform=
 const ART = {
   google: svg(`<rect x="70" y="26" width="180" height="128" rx="14" fill="#fff" stroke="${L}"/><rect x="70" y="26" width="180" height="48" rx="14" fill="url(#gg)"/><defs><linearGradient id="gg" x1="0" x2="1"><stop offset="0" stop-color="${G}"/><stop offset=".6" stop-color="${T}"/><stop offset="1" stop-color="${P}"/></linearGradient></defs><rect x="86" y="86" width="96" height="9" rx="4" fill="#2A1B4A"/>${stars(86, 102, 5, 4)}<rect x="86" y="124" width="140" height="7" rx="3" fill="${L}"/><rect x="86" y="138" width="100" height="7" rx="3" fill="${L}"/><path d="M262 40c-12 0-20 9-20 20 0 15 20 34 20 34s20-19 20-34c0-11-8-20-20-20z" fill="${P}"/><circle cx="262" cy="60" r="7" fill="#fff"/>`),
   reviews: svg(`<rect x="38" y="30" width="170" height="70" rx="14" fill="#fff" stroke="${L}"/>${stars(54, 46, 5, 3)}<rect x="54" y="70" width="130" height="7" rx="3" fill="${L}"/><rect x="54" y="83" width="90" height="7" rx="3" fill="${L}"/><path d="M60 100l-6 14 18-14z" fill="#fff"/><rect x="112" y="98" width="170" height="56" rx="14" fill="${P}"/><rect x="128" y="114" width="120" height="7" rx="3" fill="#fff" opacity=".85"/><rect x="128" y="128" width="84" height="7" rx="3" fill="#fff" opacity=".6"/><path d="M262 154l8 12-20-12z" fill="${P}"/><circle cx="276" cy="100" r="13" fill="${G}"/><path d="M270 100l4 4 8-8" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>`),
+  sentiment: svg(`<rect x="40" y="28" width="240" height="124" rx="14" fill="#fff" stroke="${L}"/><circle cx="66" cy="62" r="12" fill="${T}"/><path d="M60 64q6 6 12 0" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/><rect x="88" y="56" width="150" height="12" rx="6" fill="${T}"/><circle cx="66" cy="94" r="12" fill="${G}"/><path d="M60 97h12" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><rect x="88" y="88" width="90" height="12" rx="6" fill="${G}"/><circle cx="66" cy="126" r="12" fill="${P}"/><path d="M60 130q6-6 12 0" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/><rect x="88" y="120" width="54" height="12" rx="6" fill="${P}"/><rect x="200" y="114" width="64" height="24" rx="12" fill="${S}"/><rect x="210" y="123" width="44" height="6" rx="3" fill="${L}"/>`),
   website: svg(`<rect x="44" y="22" width="232" height="140" rx="12" fill="#fff" stroke="${L}"/><rect x="44" y="22" width="232" height="22" rx="12" fill="${L}"/><circle cx="60" cy="33" r="4" fill="${G}"/><circle cx="73" cy="33" r="4" fill="${T}"/><circle cx="86" cy="33" r="4" fill="${P}"/><rect x="60" y="56" width="200" height="54" rx="8" fill="url(#wg)"/><defs><linearGradient id="wg" x1="0" x2="1"><stop offset="0" stop-color="${P}"/><stop offset="1" stop-color="${T}"/></linearGradient></defs><rect x="72" y="70" width="96" height="9" rx="4" fill="#fff"/><rect x="72" y="85" width="64" height="7" rx="3" fill="#fff" opacity=".7"/><rect x="60" y="122" width="64" height="24" rx="12" fill="${G}"/><rect x="134" y="126" width="120" height="7" rx="3" fill="${L}"/><rect x="134" y="139" width="80" height="7" rx="3" fill="${L}"/>`),
   social: svg(`<rect x="112" y="14" width="96" height="156" rx="16" fill="#fff" stroke="${L}" stroke-width="2"/><circle cx="132" cy="38" r="9" fill="url(#sg)"/><defs><linearGradient id="sg" x1="0" x2="1"><stop offset="0" stop-color="${G}"/><stop offset="1" stop-color="${P}"/></linearGradient></defs><rect x="146" y="34" width="46" height="7" rx="3" fill="${L}"/>${[0, 1, 2].map((r) => [0, 1, 2].map((c) => `<rect x="${122 + c * 26}" y="${58 + r * 30}" width="22" height="26" rx="4" fill="${[P, G, T, L][(r + c) % 4]}" opacity="${(r + c) % 4 === 3 ? 1 : 0.8}"/>`).join('')).join('')}<path d="M238 70c-8-10-24-2-16 10l16 14 16-14c8-12-8-20-16-10z" fill="${G}"/><path d="M70 110c-6-7-17-1-11 7l11 10 11-10c6-8-5-14-11-7z" fill="${T}"/>`),
   loyalty: svg(`<rect x="50" y="36" width="220" height="112" rx="16" fill="url(#lg)"/><defs><linearGradient id="lg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="${P}"/><stop offset="1" stop-color="#2B0F63"/></linearGradient></defs><rect x="68" y="52" width="90" height="9" rx="4" fill="#fff"/><rect x="68" y="66" width="56" height="6" rx="3" fill="#fff" opacity=".6"/>${[0, 1, 2, 3, 4].map((i) => `<circle cx="${84 + i * 38}" cy="114" r="13" fill="${i < 3 ? G : 'none'}" stroke="${G}" stroke-width="2.5"/>`).join('')}<path d="M232 50l6 6 10-12" stroke="${G}" stroke-width="3" fill="none" stroke-linecap="round"/>`),
@@ -57,6 +58,19 @@ export const FIXES = {
       ['5 stars', 'Thank you, [Name]! We are so glad you loved [detail]. Our team will be thrilled to hear it. See you again soon!'],
       ['3 or 4 stars', 'Thanks for the honest feedback, [Name]. We are glad you enjoyed [detail], and we hear you on [issue]. We are working on it, and we would love the chance to make your next visit a 5.'],
       ['1 or 2 stars', 'Hi [Name], we are sorry your visit fell short. That is not the experience we want for anyone. Please reach us at [email or phone] so we can make it right.'],
+    ],
+  },
+  sentiment: {
+    label: 'Customer sentiment', offer: 'gold', guide: 'The customer sentiment scan',
+    intro: 'Your rating says how people feel. Your reviews say why. This 30 minute scan shows you what customers keep repeating, good and bad.',
+    steps: [
+      ['Pull your last 50 reviews', 'Use Google and Yelp together. Recent reviews matter most.'],
+      ['Tag each one with a theme', 'Speed, friendliness, quality, cleanliness, value, accuracy. Keep it to 6 or fewer.'],
+      ['Count your top 3 praises and top 3 complaints', 'A simple tally is enough. Patterns beat one loud review.'],
+      ['Fix the most repeated complaint first', 'Pick one change, assign one owner, and set a date.'],
+      ['Share the praise with your team', 'Read the best comments out loud at your next meeting. People repeat what gets recognized.'],
+      ['Put your top praise to work', 'Use those exact words in your website headline, Google description and social bio.'],
+      ['Repeat the scan every month', 'Watch the complaint shrink and the praise grow.'],
     ],
   },
   website: {
@@ -126,6 +140,7 @@ export const FIX_KEYS = Object.keys(FIXES);
 export function fixCategory(o = {}) {
   if (FIXES[o.category]) return o.category;
   const t = `${o.title} ${o.saw} ${o.quick_win}`.toLowerCase();
+  if (/sentiment|complain|praise|feedback|theme|mention|people say|guests say|customers say|feel about/.test(t)) return 'sentiment';
   if (/review|rating|yelp|star/.test(t)) return 'reviews';
   if (/google|map|listing|profile|search/.test(t)) return 'google';
   if (/website|site|online order|mobile|page|seo/.test(t)) return 'website';
