@@ -5,6 +5,9 @@ compatibility_date = "2026-10-01"
 # Non secret settings. Secrets (HUBSPOT_TOKEN, STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET,
 # CLICKUP_TOKEN, RESEND_API_KEY) are added in the Cloudflare
 # dashboard under Settings > Variables and Secrets. They are never stored in this repo.
+# keep any variable added in the Cloudflare dashboard when the worker is redeployed
+keep_vars = true
+
 [vars]
 OWNER_EMAIL = "michael@markitmike.com"
 # HubSpot owner every new contact, deal and task is assigned to (Michael Hernandez)

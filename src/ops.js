@@ -134,9 +134,17 @@ export async function alertOwner(env, where, detail) {
   }).catch((err) => console.error('alert send failed', err.message));
 }
 
+// warn (at most twice a day) when the calendar connection is missing, so walkthrough booking never quietly falls back
+async function calendarWatch(env) {
+  if (env.GCAL_URL && env.GCAL_SECRET) return;
+  if (await env.REPORTS.get('warn:calendar')) return;
+  await env.REPORTS.put('warn:calendar', '1', { expirationTtl: 12 * 3600 });
+  throw new Error('The calendar connection is missing (GCAL_URL and GCAL_SECRET). Prospects cannot pick walkthrough or Crown Fitting times until both are added back in Cloudflare as type Secret.');
+}
+
 /* ---------------- scheduled jobs ---------------- */
 export async function scheduled(event, env, x) {
-  const jobs = event.cron === '*/2 * * * *' ? [['pre call briefs', briefSweep]] : event.cron === env.BRIEF_CRON ? [['intake reminders', intakeReminders], ['lead nudges', leadNudges], ['daily brief', dailyBrief], ['meeting sync', meetingSync]] : [['meeting sync', meetingSync], ['cold sequence', sequenceRun], ['crown fitting follow ups', fittingFollowups], ['calendar holds', holdSweep], ['fulfillment', fulfillSweep], ['pre call brief safety net', briefOverdue]];
+  const jobs = event.cron === '*/2 * * * *' ? [['pre call briefs', briefSweep]] : event.cron === env.BRIEF_CRON ? [['intake reminders', intakeReminders], ['lead nudges', leadNudges], ['daily brief', dailyBrief], ['meeting sync', meetingSync]] : [['meeting sync', meetingSync], ['cold sequence', sequenceRun], ['crown fitting follow ups', fittingFollowups], ['calendar holds', holdSweep], ['fulfillment', fulfillSweep], ['pre call brief safety net', briefOverdue], ['calendar connection', calendarWatch]];
   for (const [name, fn] of jobs) {
     try { await fn(env, x); } catch (err) { console.error(name, err.stack || err); await alertOwner(env, name, String(err.message || err)); }
   }
