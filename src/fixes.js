@@ -290,7 +290,7 @@ h2{font:900 18px Montserrat,Arial;color:#1c1236;margin:26px 0 10px}.tp{backgroun
 @media (max-width:600px){.w{margin:0;border-radius:0}header,main{padding-left:18px;padding-right:18px}h1{font-size:24px}}@media print{body{background:#fff}.w{box-shadow:none;margin:0}.dfy,.pr{display:none}}
 </style></head><body><div class="w"><header><img src="${LOGO}" alt="Markit Mike Agency"><p class="ey">Free guide · ${esc(f.label)}</p><h1>${esc(f.guide)}</h1></header><div class="art">${fixArt(cat)}</div>
 <main><p class="intro">${esc(f.intro)}</p><ol>${steps}</ol>${tpl ? `<h2>Copy and paste replies</h2>${tpl}` : ''}
-<div class="dfy"><p><b>Rather have it done for you?</b><br>Our team handles this in the ${esc(o.name)}, ${esc(o.price)}.</p><a class="btn" href="${WORKER}/fix/${cat}/go${pub ? `?s=${encodeURIComponent(pub)}` : ''}">${esc(o.cta)}</a></div>
+${pub ? `<div class="dfy"><p><b>This is one piece of the picture.</b><br>Your plan walkthrough covers every opportunity we found, and the order to fix them in.</p><a class="btn" href="${WORKER}/s/${encodeURIComponent(pub)}#next">Back to my Snapshot</a></div>` : `<div class="dfy"><p><b>Rather have it done for you?</b><br>Our team handles this in the ${esc(o.name)}, ${esc(o.price)}.</p><a class="btn" href="${WORKER}/fix/${cat}/go">${esc(o.cta)}</a></div>`}
 <p class="pr">Tip: check items off as you go, or print this page. Questions? <a href="mailto:team@markitmike.com">team@markitmike.com</a></p></main></div></body></html>`;
   return new Response(page, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex' } });
 }
