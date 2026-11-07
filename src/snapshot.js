@@ -192,7 +192,12 @@ export async function snapshotReview(req, env, x) {
   const tok = new URL(req.url).pathname.split('/')[2] || '';
   if (!/^[a-z0-9]{10,24}$/.test(tok)) return new Response('Not found', { status: 404 });
   const rec = await env.REPORTS.get(`snap:${tok}`, 'json');
-  if (!rec) return html('Not found', '<p style="padding:40px;text-align:center">This Snapshot link is not valid.</p>');
+  // A brand new draft can take up to a minute to reach every Cloudflare location, so a miss right after
+  // the HubSpot task appears is usually just that delay: show a friendly page that refreshes itself.
+  if (!rec) {
+    if (req.method !== 'GET') return new Response(JSON.stringify({ error: 'This Snapshot is still being prepared. Refresh in a minute.' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+    return html('Preparing your Snapshot', '<div style="max-width:520px;margin:80px auto;padding:32px;text-align:center;background:#fff;border-radius:18px;box-shadow:0 12px 30px rgba(29,10,64,.08);font-family:Inter,system-ui,sans-serif"><h1 style="font-family:Montserrat,system-ui,sans-serif;font-weight:900;font-size:24px;margin:0 0 10px;color:#1c1236">Your Snapshot is almost ready</h1><p style="color:#5a5372;margin:0">A new draft can take up to a minute to appear. This page refreshes on its own every 15 seconds.</p><p style="color:#5a5372;font-size:13px;margin:18px 0 0">Still here after 3 minutes? The link may be from an older draft. Open the newest Review and send task in HubSpot.</p></div>', '<meta http-equiv="refresh" content="15">');
+  }
   if (req.method === 'POST') {
     let b = {};
     try { b = await req.json(); } catch {}
