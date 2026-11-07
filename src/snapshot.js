@@ -228,7 +228,7 @@ export async function snapshotReview(req, env, x) {
       }
       await x.sendAndLog(env, { to: email, contact, deal: { id: rec.dealId }, ...snapshotEmail({ firstName: contact.properties.firstname, company: rec.company, link: `${WORKER}/s/${rec.pub}`, booking: rec.booking }) });
       rec.status = 'sent'; rec.sentAt = Date.now();
-      await x.hs(env, 'POST', '/crm/v3/objects/notes', { properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Brand Experience Snapshot sent</b> to ${esc(email)}.</p><p><a href="${WORKER}/s/${rec.pub}">Their preview</a> &middot; <a href="${WORKER}/snapshot/${tok}">Edit view</a></p>` }, associations: [{ to: { id: rec.contactId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }, { to: { id: rec.dealId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 214 }] }] }).catch((e) => console.error('snap note', e.message));
+      await x.hs(env, 'POST', '/crm/v3/objects/notes', { properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Brand Experience Snapshot sent</b> to ${esc(email)}.</p><p><a href="${WORKER}/s/${rec.pub}?by=${tok}">Their preview (your opens are not tracked)</a> &middot; <a href="${WORKER}/snapshot/${tok}">Edit view</a></p>` }, associations: [{ to: { id: rec.contactId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }, { to: { id: rec.dealId }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 214 }] }] }).catch((e) => console.error('snap note', e.message));
       if (rec.taskId) await x.hs(env, 'PATCH', `/crm/v3/objects/tasks/${rec.taskId}`, { properties: { hs_task_status: 'COMPLETED' } }).catch(() => {});
       msg = `Sent to ${email}. You will get an alert the first time they open it.`;
     }
@@ -237,7 +237,7 @@ export async function snapshotReview(req, env, x) {
   }
   if (new URL(req.url).searchParams.get('present') === '1') return html(`Snapshot: ${rec.company}`, doc(rec, 'present'));
   const sent = rec.status === 'sent';
-  const bar = `<div class="bar"><p>${sent ? '<b>Sent.</b> Edits you save now also update what they see.' : rec.ai ? '<b>Draft ready.</b> Click any text to edit it, then Save or Approve and send. They get a preview: What we heard and the observation with the quick win. The rest is for the walkthrough.' : '<b>Starter draft.</b> The AI draft was unavailable, so this was built straight from your notes. Edit, then send.'}</p><div class="b"><span id="st" style="align-self:center;font-size:13px;opacity:.8"></span><button class="save" id="save" type="button">Save</button><a href="${WORKER}/snapshot/${tok}?present=1" target="_blank" rel="noopener" style="color:#FBE7C6;align-self:center;font-weight:800;font-size:14px">Present full</a>${sent ? `<a href="${WORKER}/s/${rec.pub}" target="_blank" rel="noopener" style="color:#FBE7C6;align-self:center;font-weight:800;font-size:14px">Client view</a>` : '<button class="send" id="send" type="button">Approve and send</button>'}</div></div>`;
+  const bar = `<div class="bar"><p>${sent ? '<b>Sent.</b> Edits you save now also update what they see.' : rec.ai ? '<b>Draft ready.</b> Click any text to edit it, then Save or Approve and send. They get a preview: What we heard and the observation with the quick win. The rest is for the walkthrough.' : '<b>Starter draft.</b> The AI draft was unavailable, so this was built straight from your notes. Edit, then send.'}</p><div class="b"><span id="st" style="align-self:center;font-size:13px;opacity:.8"></span><button class="save" id="save" type="button">Save</button><a href="${WORKER}/snapshot/${tok}?present=1" target="_blank" rel="noopener" style="color:#FBE7C6;align-self:center;font-weight:800;font-size:14px">Present full</a>${sent ? `<a href="${WORKER}/s/${rec.pub}?by=${tok}" target="_blank" rel="noopener" style="color:#FBE7C6;align-self:center;font-weight:800;font-size:14px">Their preview</a>` : '<button class="send" id="send" type="button">Approve and send</button>'}</div></div>`;
   const js = `<script>(function(){var st=document.getElementById('st');function edits(){var o={};document.querySelectorAll('[data-k]').forEach(function(el){o[el.getAttribute('data-k')]=el.innerText;});return o;}
 function go(action,btn){btn.disabled=true;st.textContent=action==='send'?'Sending...':'Saving...';fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({edits:edits(),action:action})}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Something went wrong');return d;});}).then(function(d){st.textContent=d.message;btn.disabled=false;if(action==='send')setTimeout(function(){location.reload();},1200);}).catch(function(e){st.textContent=e.message;btn.disabled=false;});}
 document.getElementById('save').onclick=function(){go('save',this);};var s=document.getElementById('send');if(s)s.onclick=function(){go('send',this);};
@@ -252,7 +252,14 @@ export async function snapshotClient(req, env, x) {
   const tok = await env.REPORTS.get(`snappub:${pub}`);
   const rec = tok && (await env.REPORTS.get(`snap:${tok}`, 'json'));
   if (!rec) return html('Not found', '<p style="padding:40px;text-align:center">This link is not available.</p>');
-  if (!rec.openedAt) {
+  // Opens by Markit Mike (links from the review page and HubSpot carry ?by=<review token>), by email
+  // security scanners that click every link the moment the email lands, or by obvious bots are not
+  // real opens, so they never trigger the warm lead alert.
+  const u = new URL(req.url);
+  const ua = (req.headers.get('User-Agent') || '').toLowerCase();
+  const owner = u.searchParams.get('by') === tok;
+  const scanner = (rec.sentAt && Date.now() - rec.sentAt < 2 * 60e3) || /bot|crawl|spider|preview|scan|proofpoint|mimecast|barracuda|safelinks|headless|python|curl|wget/.test(ua);
+  if (!rec.openedAt && !owner && !scanner) {
     rec.openedAt = Date.now();
     await env.REPORTS.put(`snap:${tok}`, JSON.stringify(rec));
     const title = `${rec.who || rec.company} opened their Brand Experience Snapshot`;
