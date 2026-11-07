@@ -149,7 +149,7 @@ const CSS = `
 .meta{text-align:right;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.78)}.meta b{display:block;color:#fff;font:800 16px Montserrat,Arial;letter-spacing:0;text-transform:none}
 .eyebrow{margin:22px 0 0;font:800 11px Montserrat,Arial;letter-spacing:.3em;text-transform:uppercase;color:#FBE7C6}
 h1{margin:6px 0 0;font:900 clamp(28px,5vw,40px)/1.05 Montserrat,Arial;color:#fff}h1 span{background:linear-gradient(90deg,#F7C66B,#E79A27 55%,#C9741A);-webkit-background-clip:text;background-clip:text;color:transparent}
-.foil{height:6px;margin-top:-6px;background:linear-gradient(90deg,#F7D58B,#E79A27 40%,#B8681A 70%,#F2B85A)}
+.foil{position:relative;height:36px;margin-top:-30px;margin-bottom:-22px;background:linear-gradient(90deg,#F7D58B,#E79A27 40%,#B8681A 70%,#F2B85A);clip-path:polygon(0 30px,100% 0,100% 6px,0 36px);pointer-events:none}
 .sec{padding:22px 44px 0}.sec:last-of-type{padding-bottom:10px}
 .label{display:flex;align-items:center;gap:8px;margin:0 0 10px;font:800 11px Montserrat,Arial;letter-spacing:.2em;text-transform:uppercase;color:var(--purple)}.label::before{content:"";width:18px;height:3px;border-radius:2px;background:var(--gold)}
 .heard{display:grid;grid-template-columns:1.5fr 1fr;gap:28px;align-items:center}
