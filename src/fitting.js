@@ -338,9 +338,19 @@ async function save(req, env, x, ref, contact, who, ctx) {
       if (ctx && ctx.waitUntil) ctx.waitUntil(job); else steps.push(job);
     }
   }
+  // notes resubmitted after the Snapshot was drafted: redraft it from the full notes, as long as it has not been sent
+  let redraft = false;
+  if (already && hasSnap) {
+    const cur = await env.REPORTS.get(`snap:${hasSnap}`, 'json');
+    if (cur && cur.status === 'draft') {
+      redraft = true;
+      const job = buildSnapshot(env, x, { dealId, contactId: contact.id, answers: a, who, company: cp.company || '', firstName: cp.firstname }).catch((e) => console.error('snapshot redraft', e.message));
+      if (ctx && ctx.waitUntil) ctx.waitUntil(job); else steps.push(job);
+    }
+  }
   (await Promise.allSettled(steps)).forEach((r) => r.status === 'rejected' && console.error('fitting save', r.reason && r.reason.message));
   await env.REPORTS.put(`fitdone:${dealId}`, String(Date.now()));
-  const msg = already && hasSnap ? 'Your updated notes were added to the deal.' : `Notes are on the deal, it moved to Crown Fitting Held${body.thanks && cp.email ? `, ${esc(cp.firstname || 'they')} got the thank you email` : ''}, and your Brand Experience Snapshot draft will be ready in HubSpot in about a minute.`;
+  const msg = redraft ? 'Your updated notes were added to the deal, and your Snapshot draft is being redrafted from them. Refresh the same review link in about a minute.' : already && hasSnap ? 'Your updated notes were added to the deal.' : `Notes are on the deal, it moved to Crown Fitting Held${body.thanks && cp.email ? `, ${esc(cp.firstname || 'they')} got the thank you email` : ''}, and your Brand Experience Snapshot draft will be ready in HubSpot in about a minute.`;
   return new Response(JSON.stringify({ ok: true, message: msg, hubspot: `https://app-na2.hubspot.com/contacts/246716405/record/0-3/${dealId}` }), { headers: { 'Content-Type': 'application/json' } });
 }
 

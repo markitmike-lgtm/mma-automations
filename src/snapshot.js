@@ -93,7 +93,9 @@ export async function buildSnapshot(env, x, { dealId, contactId, answers, who, c
   const { data, ai } = await draftContent(env, answers, company || who);
   const prev = await env.REPORTS.get(`snapdeal:${dealId}`);
   const tok = prev || token();
-  const rec = { dealId: String(dealId), contactId: String(contactId), company: company || who, who, firstName, date: new Date().toISOString(), scores: Object.fromEntries(SCORES.map(([k]) => [k, Number(answers[k]) || null])), data, ai, status: 'draft', pub: token(16) };
+  // a redraft (notes resubmitted) keeps the same review link, client link and HubSpot task
+  const old = prev ? await env.REPORTS.get(`snap:${prev}`, 'json') : null;
+  const rec = { dealId: String(dealId), contactId: String(contactId), company: company || who, who, firstName, date: new Date().toISOString(), scores: Object.fromEntries(SCORES.map(([k]) => [k, Number(answers[k]) || null])), data, ai, status: 'draft', pub: old?.pub || token(16), ...(old?.taskId ? { taskId: old.taskId } : {}) };
   await env.REPORTS.put(`snap:${tok}`, JSON.stringify(rec));
   await env.REPORTS.put(`snapdeal:${dealId}`, tok);
   return { url: `${WORKER}/snapshot/${tok}`, ai };
