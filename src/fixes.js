@@ -19,7 +19,13 @@ const ART = {
   website: svg(`<rect x="44" y="22" width="232" height="140" rx="12" fill="#fff" stroke="${L}"/><rect x="44" y="22" width="232" height="22" rx="12" fill="${L}"/><circle cx="60" cy="33" r="4" fill="${G}"/><circle cx="73" cy="33" r="4" fill="${T}"/><circle cx="86" cy="33" r="4" fill="${P}"/><rect x="60" y="56" width="200" height="54" rx="8" fill="url(#wg)"/><defs><linearGradient id="wg" x1="0" x2="1"><stop offset="0" stop-color="${P}"/><stop offset="1" stop-color="${T}"/></linearGradient></defs><rect x="72" y="70" width="96" height="9" rx="4" fill="#fff"/><rect x="72" y="85" width="64" height="7" rx="3" fill="#fff" opacity=".7"/><rect x="60" y="122" width="64" height="24" rx="12" fill="${G}"/><rect x="134" y="126" width="120" height="7" rx="3" fill="${L}"/><rect x="134" y="139" width="80" height="7" rx="3" fill="${L}"/>`),
   social: svg(`<rect x="112" y="14" width="96" height="156" rx="16" fill="#fff" stroke="${L}" stroke-width="2"/><circle cx="132" cy="38" r="9" fill="url(#sg)"/><defs><linearGradient id="sg" x1="0" x2="1"><stop offset="0" stop-color="${G}"/><stop offset="1" stop-color="${P}"/></linearGradient></defs><rect x="146" y="34" width="46" height="7" rx="3" fill="${L}"/>${[0, 1, 2].map((r) => [0, 1, 2].map((c) => `<rect x="${122 + c * 26}" y="${58 + r * 30}" width="22" height="26" rx="4" fill="${[P, G, T, L][(r + c) % 4]}" opacity="${(r + c) % 4 === 3 ? 1 : 0.8}"/>`).join('')).join('')}<path d="M238 70c-8-10-24-2-16 10l16 14 16-14c8-12-8-20-16-10z" fill="${G}"/><path d="M70 110c-6-7-17-1-11 7l11 10 11-10c6-8-5-14-11-7z" fill="${T}"/>`),
   loyalty: svg(`<rect x="50" y="36" width="220" height="112" rx="16" fill="url(#lg)"/><defs><linearGradient id="lg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="${P}"/><stop offset="1" stop-color="#2B0F63"/></linearGradient></defs><rect x="68" y="52" width="90" height="9" rx="4" fill="#fff"/><rect x="68" y="66" width="56" height="6" rx="3" fill="#fff" opacity=".6"/>${[0, 1, 2, 3, 4].map((i) => `<circle cx="${84 + i * 38}" cy="114" r="13" fill="${i < 3 ? G : 'none'}" stroke="${G}" stroke-width="2.5"/>`).join('')}<path d="M232 50l6 6 10-12" stroke="${G}" stroke-width="3" fill="none" stroke-linecap="round"/>`),
+  loyaltyboost: svg(`<rect x="118" y="12" width="92" height="158" rx="16" fill="#fff" stroke="${L}" stroke-width="2"/><rect x="128" y="28" width="72" height="56" rx="10" fill="url(#ab)"/><defs><linearGradient id="ab" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="${P}"/><stop offset="1" stop-color="#2B0F63"/></linearGradient></defs><rect x="136" y="38" width="40" height="7" rx="3" fill="#fff"/><rect x="136" y="64" width="56" height="8" rx="4" fill="#fff" opacity=".25"/><rect x="136" y="64" width="38" height="8" rx="4" fill="${G}"/><rect x="128" y="94" width="72" height="22" rx="8" fill="${S}"/><circle cx="140" cy="105" r="6" fill="${T}"/><rect x="152" y="102" width="40" height="6" rx="3" fill="${L}"/><rect x="128" y="122" width="72" height="22" rx="8" fill="${S}"/><circle cx="140" cy="133" r="6" fill="${G}"/><rect x="152" y="130" width="34" height="6" rx="3" fill="${L}"/><path d="M236 120l18-34 18 34" stroke="${T}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M254 86v-0" /><path d="M248 92l6-6 6 6" stroke="${T}" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M60 70c-8-10-24-2-16 10l16 14 16-14c8-12-8-20-16-10z" fill="${G}"/>`),
   opening: svg(`<rect x="88" y="30" width="144" height="124" rx="14" fill="#fff" stroke="${L}"/><rect x="88" y="30" width="144" height="34" rx="14" fill="${P}"/><rect x="88" y="50" width="144" height="14" fill="${P}"/><rect x="110" y="22" width="8" height="20" rx="4" fill="${G}"/><rect x="202" y="22" width="8" height="20" rx="4" fill="${G}"/>${[0, 1, 2, 3].map((r) => [0, 1, 2, 3, 4].map((c) => `<rect x="${102 + c * 24}" y="${74 + r * 19}" width="16" height="12" rx="3" fill="${r === 2 && c === 3 ? G : L}"/>`).join('')).join('')}<path d="M20 60h46l-8 10 8 10H20z" fill="${G}"/><path d="M300 110h-46l8 10-8 10h46z" fill="${T}"/>`),
+  ordering: svg(`<rect x="70" y="16" width="88" height="150" rx="16" fill="#fff" stroke="${L}" stroke-width="2"/><rect x="80" y="32" width="68" height="40" rx="8" fill="${T}"/><rect x="80" y="80" width="68" height="10" rx="5" fill="${L}"/><rect x="80" y="96" width="50" height="10" rx="5" fill="${L}"/><rect x="80" y="138" width="68" height="18" rx="9" fill="${G}"/><path d="M196 70h70l-8 84h-54z" fill="${P}"/><path d="M214 70v-10a17 17 0 0 1 34 0v10" stroke="${P}" stroke-width="5" fill="none"/><path d="M216 108l10 10 20-20" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/>`),
+  email: svg(`<rect x="70" y="44" width="180" height="112" rx="12" fill="#fff" stroke="${L}" stroke-width="2"/><path d="M70 54l90 58 90-58" stroke="${P}" stroke-width="5" fill="none" stroke-linejoin="round"/><circle cx="244" cy="48" r="18" fill="${G}"/><text x="244" y="54" font-family="Arial" font-size="17" font-weight="900" fill="#fff" text-anchor="middle">3</text><rect x="24" y="78" width="34" height="56" rx="7" fill="${T}"/><rect x="31" y="88" width="20" height="5" rx="2" fill="#fff"/><rect x="31" y="98" width="14" height="5" rx="2" fill="#fff" opacity=".7"/>`),
+  local: svg(`<rect x="36" y="24" width="248" height="132" rx="14" fill="#fff" stroke="${L}"/><path d="M36 100c50-30 90 20 140-10s70-30 108-10" stroke="${L}" stroke-width="10" fill="none"/><path d="M110 24v132M210 24v132" stroke="${S}" stroke-width="8"/><path d="M160 46c-12 0-20 9-20 20 0 15 20 34 20 34s20-19 20-34c0-11-8-20-20-20z" fill="${P}"/><circle cx="160" cy="66" r="7" fill="#fff"/>${[[80, 120, G], [236, 70, T], [226, 130, G], [70, 60, T]].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="9" fill="${c}"/>`).join('')}<circle cx="160" cy="70" r="56" fill="none" stroke="${G}" stroke-width="2" stroke-dasharray="5 6"/>`),
+  experience: svg(`<rect x="70" y="58" width="180" height="102" rx="6" fill="#fff" stroke="${L}" stroke-width="2"/><path d="M60 58l14-30h172l14 30z" fill="${P}"/>${[0, 1, 2, 3, 4, 5].map((i) => `<path d="M${60 + i * 33.3} 58a16.6 14 0 0 0 33.3 0" fill="${i % 2 ? G : '#fff'}"/>`).join('')}<rect x="140" y="104" width="40" height="56" rx="4" fill="${T}"/><rect x="88" y="90" width="38" height="30" rx="4" fill="${S}"/><rect x="194" y="90" width="38" height="30" rx="4" fill="${S}"/>${stars(116, 132, 0)}<path d="M266 40l4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1z" fill="${G}"/>`),
+  competitors: svg(`<rect x="44" y="24" width="232" height="132" rx="14" fill="#fff" stroke="${L}"/>${[['You', 70, P], ['A', 104, L], ['B', 84, L], ['C', 56, L]].map(([n, h, c], i) => `<rect x="${74 + i * 50}" y="${140 - h}" width="34" height="${h}" rx="6" fill="${c}"/><text x="${91 + i * 50}" y="152" font-family="Arial" font-size="10" font-weight="700" fill="#5a5372" text-anchor="middle">${n}</text>`).join('')}<path d="M126 32l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" fill="${G}"/>`),
   brand: svg(`<path d="M100 128l-12-66 40 30 32-48 32 48 40-30-12 66z" fill="url(#cg)"/><defs><linearGradient id="cg" x1="0" x2="1"><stop offset="0" stop-color="#FFE08A"/><stop offset=".55" stop-color="${G}"/><stop offset="1" stop-color="#C06F14"/></linearGradient></defs><rect x="98" y="134" width="124" height="16" rx="6" fill="${P}"/><circle cx="160" cy="104" r="9" fill="${P}"/><circle cx="124" cy="110" r="6" fill="${T}"/><circle cx="196" cy="110" r="6" fill="${T}"/>`),
 };
 
@@ -28,7 +34,10 @@ const OFFERS = {
   glowup: { name: 'Google Profile Glow Up', price: '$297', url: `${QW}#glowup-explained`, cta: 'Have our team do it' },
   checkup: { name: 'Brand Checkup', price: '$197', url: `${QW}#checkup-explained`, cta: 'Have our team review it' },
   gold: { name: 'Gold Starter', price: '$497', url: 'https://markitmike.com/gold-starter/', cta: 'Get the full plan' },
+  walkthrough: { name: 'your plan walkthrough', price: '', url: '#next', cta: 'Let\'s fix it together', inline: true },
 };
+export const OFFER_KEYS = Object.keys(OFFERS);
+export const OFFER_LABELS = { glowup: 'Glow Up $297', checkup: 'Brand Checkup $197', gold: 'Gold Starter $497', walkthrough: 'Plan walkthrough (no price)' };
 
 export const FIXES = {
   google: {
@@ -98,7 +107,7 @@ export const FIXES = {
     ],
   },
   loyalty: {
-    label: 'Loyalty and repeat visits', offer: 'gold', guide: 'The repeat visit starter kit',
+    label: 'Loyalty: no program yet', offer: 'gold', guide: 'The repeat visit starter kit',
     intro: 'Bringing a customer back costs far less than finding a new one. Start simple and make it easy to join.',
     steps: [
       ['Pick one simple reward', 'Visit based or points based, explained in one sentence.'],
@@ -107,6 +116,19 @@ export const FIXES = {
       ['Send a welcome message', 'Thank them and tell them what they are working toward.'],
       ['Win back quiet customers', 'Anyone who has not visited in 30 to 45 days gets a friendly reason to return.'],
       ['Track 2 numbers monthly', 'New members and the share of sales from members.'],
+    ],
+  },
+  loyaltyboost: {
+    label: 'Loyalty: improve a live program or app', offer: 'gold', guide: 'The loyalty program tune up',
+    intro: 'Having a program is step one. Most programs leave money on the table in the same few places. Check yours against this list.',
+    steps: [
+      ['Check your join rate', 'Of every 10 customers who pay, how many are members? If it is under 3, the ask at checkout is the first fix.'],
+      ['Make the first reward reachable fast', 'New members should earn something within their first 2 or 3 visits, or they forget the program exists.'],
+      ['Read your app store reviews', 'Complaints about login, points not showing or slow ordering are fixes that pay back right away.'],
+      ['Tighten the welcome message', 'Thank them, show their progress and give one reason to come back this week.'],
+      ['Win back lapsed members', 'Anyone quiet for 30 to 45 days gets a personal, time limited reason to return.'],
+      ['Promote the program everywhere', 'Counter signs, receipts, website, Google profile and social bio. One clear line, one QR code.'],
+      ['Track 3 numbers monthly', 'New members, active members, and the share of sales from members.'],
     ],
   },
   opening: {
@@ -120,6 +142,69 @@ export const FIXES = {
       ['Opening day: capture everything', 'Photos, video and reviews. Ask your first customers to share.'],
       ['Week 2: follow up', 'Thank your VIP list and give them a reason to come back.'],
     ],
+  },
+  ordering: {
+    label: 'Online ordering and delivery', offer: 'gold', guide: 'The online ordering check',
+    intro: 'Every extra tap between hungry and ordered costs you sales. Walk through your own ordering like a first time customer.',
+    steps: [
+      ['Order from your own site on your phone', 'Count the taps from your home page to checkout. Aim for 5 or fewer.'],
+      ['Put the Order button everywhere', 'Website header, Google profile, social bios and your link in bio page.'],
+      ['Make your own ordering the best deal', 'Third party apps take a big cut. Give direct orders a small perk so customers choose you directly.'],
+      ['Fix your photos and descriptions', 'Your top 10 items should each have a real photo and a one line description.'],
+      ['Check your hours and item availability', 'Nothing frustrates like ordering something you cannot get.'],
+      ['Capture every direct customer', 'Ask for email or text consent at checkout so you can invite them back.'],
+    ],
+  },
+  email: {
+    label: 'Email and text marketing', offer: 'gold', guide: 'The 3 message welcome series',
+    intro: 'Your list is the one audience you own. Three automatic messages turn a signup into a second visit.',
+    steps: [
+      ['Add a signup everywhere', 'Website, checkout, Wi Fi login and a QR code at the counter. Offer a small thank you.'],
+      ['Message 1, right away: welcome', 'Thank them, deliver the thank you offer and say what makes you different.'],
+      ['Message 2, day 3: your story', 'Show your people, your best sellers and what to try next.'],
+      ['Message 3, day 10: come back', 'A friendly, time limited reason to visit again.'],
+      ['Send one regular message a month', 'News, a seasonal item or an event. Consistent beats frequent.'],
+      ['Watch 2 numbers', 'Signups per week and how many messages lead to a visit or order.'],
+    ],
+  },
+  local: {
+    label: 'Local store marketing and community', offer: 'gold', guide: 'The 3 mile neighborhood plan',
+    intro: 'Most of your customers live or work within a few miles. Win your neighborhood before you spend on anyone else.',
+    steps: [
+      ['Map your 3 mile circle', 'List the schools, offices, gyms, churches and teams nearby.'],
+      ['Pick 3 partners for this quarter', 'One school, one business and one community group is a strong start.'],
+      ['Offer something easy to say yes to', 'A fundraiser night, a team discount or catering for their next meeting.'],
+      ['Show up in person', 'Drop off a sample and a simple flyer with a QR code. Faces beat emails.'],
+      ['Track each partner with its own code', 'So you know what actually brought people in.'],
+      ['Thank them publicly', 'Tag them on social and invite them back.'],
+    ],
+  },
+  experience: {
+    label: 'In store experience', offer: 'gold', guide: 'The first 60 seconds walkthrough',
+    intro: 'Marketing brings people in, the experience brings them back. Walk in like a first time customer and check the moments that matter.',
+    steps: [
+      ['Start in the parking lot', 'Is the sign lit, the entry clean and the way in obvious?'],
+      ['Time the greeting', 'Every customer should be acknowledged within 10 seconds of walking in.'],
+      ['Check the menu or offer board', 'Can a first timer decide in under a minute? Feature your best sellers.'],
+      ['Sit where your customers sit', 'Look at what they see: restrooms, tables, music, lighting.'],
+      ['Watch the goodbye', 'A sincere thank you and an invitation back is the last thing they remember.'],
+      ['Fix one moment a week', 'Pick the weakest moment, give it an owner, and recheck next week.'],
+    ],
+  },
+  competitors: {
+    label: 'Competitive position', offer: 'gold', guide: 'The competitor scorecard',
+    intro: 'Customers compare you to two or three nearby options before they choose. See yourself side by side, the way they do.',
+    steps: [
+      ['Pick your 3 closest competitors', 'The places your customers would go if you were closed today.'],
+      ['Compare Google ratings and review counts', 'Write down each rating and how many reviews each has.'],
+      ['Compare photos and first impressions', 'Open each Google profile and website on your phone. Which looks most inviting?'],
+      ['Compare what each one promises', 'Read their headlines and bios. Note what everyone says, and what nobody says.'],
+      ['Compare loyalty, ordering and offers', 'Who rewards repeat visits? Who makes ordering easiest?'],
+      ['Pick one gap to own', 'Choose one thing you can do better than all three, and say it everywhere.'],
+    ],
+  },
+  other: {
+    label: 'Other (custom steps only)', offer: 'walkthrough', guide: '', intro: '', steps: [],
   },
   brand: {
     label: 'Brand and positioning', offer: 'gold', guide: 'The one line brand check',
@@ -140,12 +225,17 @@ export const FIX_KEYS = Object.keys(FIXES);
 export function fixCategory(o = {}) {
   if (FIXES[o.category]) return o.category;
   const t = `${o.title} ${o.saw} ${o.quick_win}`.toLowerCase();
+  if (/competitor|compared to|versus|vs\.? |nearby options|down the street/.test(t)) return 'competitors';
   if (/sentiment|complain|praise|feedback|theme|mention|people say|guests say|customers say|feel about/.test(t)) return 'sentiment';
   if (/review|rating|yelp|star/.test(t)) return 'reviews';
   if (/google|map|listing|profile|search/.test(t)) return 'google';
   if (/website|site|online order|mobile|page|seo/.test(t)) return 'website';
   if (/instagram|facebook|tiktok|social|post/.test(t)) return 'social';
-  if (/loyal|repeat|reward|member|retention|come back/.test(t)) return 'loyalty';
+  if (/loyal|repeat|reward|member|retention|come back|points/.test(t)) return /\bno (loyalty|program|app|rewards)|without a|none found|does not have|doesn't have|not have a|launch a|start a/.test(t) ? 'loyalty' : /\bapp\b|existing|current|redemption|members|points|their program|your program/.test(t) ? 'loyaltyboost' : 'loyalty';
+  if (/order|delivery|doordash|ubereats|grubhub|toast|olo|checkout/.test(t)) return 'ordering';
+  if (/email|newsletter|text message|sms|list|subscriber/.test(t)) return 'email';
+  if (/greet|wait|service|clean|staff|dining room|in store|atmosphere|experience/.test(t)) return 'experience';
+  if (/community|school|neighbor|partner|fundrais|catering|local/.test(t)) return 'local';
   if (/open|launch|new location|new store/.test(t)) return 'opening';
   return 'brand';
 }
@@ -153,11 +243,12 @@ export function fixCategory(o = {}) {
 export function fixArt(cat) { return ART[cat] || ART.brand; }
 
 // pub: the Snapshot's public token, so clicks can be tied back to the deal
-export function fixLinks(cat, pub) {
+export function fixLinks(cat, pub, offerKey) {
   const f = FIXES[cat] || FIXES.brand;
-  const o = OFFERS[f.offer];
-  const q = pub ? `?s=${encodeURIComponent(pub)}` : '';
-  return { guide: f.guide, diy: `${WORKER}/fix/${cat}${q}`, offer: o, dfy: `${WORKER}/fix/${cat}/go${q}` };
+  const ok = OFFERS[offerKey] ? offerKey : f.offer;
+  const o = OFFERS[ok];
+  const q = new URLSearchParams({ ...(pub ? { s: pub } : {}), ...(ok !== f.offer ? { o: ok } : {}) }).toString();
+  return { guide: f.guide, diy: f.guide ? `${WORKER}/fix/${cat}${pub ? `?s=${encodeURIComponent(pub)}` : ''}` : '', offerKey: ok, offer: o, dfy: o.inline ? o.url : `${WORKER}/fix/${cat}/go${q ? `?${q}` : ''}` };
 }
 
 async function logClick(env, x, pub, what) {
@@ -176,10 +267,11 @@ export async function fixRoute(req, env, x, ctx) {
   const u = new URL(req.url);
   const [, , cat, go] = u.pathname.split('/');
   const f = FIXES[cat];
-  if (!f) return Response.redirect(QW, 302);
+  if (!f || (!f.guide && go !== 'go')) return Response.redirect(QW, 302);
   const pub = u.searchParams.get('s') || '';
   const bot = /bot|crawl|spider|preview|scan|proofpoint|mimecast|barracuda|safelinks|headless/i.test(req.headers.get('User-Agent') || '');
-  const o = OFFERS[f.offer];
+  const ov = OFFERS[u.searchParams.get('o')];
+  const o = ov && !ov.inline ? ov : OFFERS[f.offer].inline ? OFFERS.gold : OFFERS[f.offer];
   if (go === 'go') {
     if (!bot) ctx.waitUntil(logClick(env, x, pub, `clicked the ${o.name} offer (${f.label})`));
     return Response.redirect(o.url, 302);

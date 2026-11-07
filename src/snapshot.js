@@ -6,7 +6,7 @@ import { snapshotEmail } from './emails.js';
 import { FIT_SECTIONS } from './fitting.js';
 import { CROWN_SCORES } from './crown.js';
 import { offerTimes, shortWhen } from './schedule.js';
-import { FIXES, FIX_KEYS, fixCategory, fixArt, fixLinks } from './fixes.js';
+import { FIXES, FIX_KEYS, OFFER_KEYS, OFFER_LABELS, fixCategory, fixArt, fixLinks } from './fixes.js';
 
 const WORKER = 'https://mma-automations.markitmike.workers.dev';
 const LOGO = 'https://markitmike.com/wp-content/uploads/2026/11/mma-logo-reverse-tight.png';
@@ -30,7 +30,7 @@ Return ONLY a JSON object with exactly these keys:
  "quote": "their single most telling line from the notes, lightly cleaned up, in their words (no quote marks)",
  "quote_label": "what the quote is, for example Your 90 day goal, in your words",
  "where": ["2 or 3 short statements about where things stand today"],
- "observations": [{"title": "3 to 5 word title", "saw": "what we saw, one sentence", "why": "why it matters, one sentence", "quick_win": "one concrete action they can take this week, or empty string", "category": "one of google, reviews (rating, volume, replies), sentiment (what customers repeatedly praise or complain about), website, social, loyalty, opening, brand", "stat_value": "one number from the notes or research that shows this gap, for example 3.8 or 12, or empty string", "stat_label": "what that number is, for example Google rating, or empty string", "stat_goal": "a target for that number only if the notes give one, else empty string"}],
+ "observations": [{"title": "3 to 5 word title", "saw": "what we saw, one sentence", "why": "why it matters, one sentence", "quick_win": "one concrete action they can take this week, or empty string", "category": "one of google, reviews (rating, volume, replies), sentiment (what customers repeatedly praise or complain about), website, social, ordering (online ordering and delivery), email (email or text marketing), loyalty (they have no loyalty program or app yet), loyaltyboost (they have a live loyalty program or app that could perform better), local (local store marketing and community), competitors (how they stack up against nearby competitors), experience (in store experience), opening, brand, other", "steps": ["2 or 3 short do it yourself steps specific to this observation, each under 15 words"], "stat_value": "one number from the notes or research that shows this gap, for example 3.8 or 12, or empty string", "stat_label": "what that number is, for example Google rating, or empty string", "stat_goal": "a target for that number only if the notes give one, else empty string"}],
  "summary": "one bold sentence that ties their goal to the biggest gap",
  "summary_more": "one supporting sentence",
  "help": [{"title": "what they want help with, short", "quote": "their words if the notes have them, else empty string"}],
@@ -82,7 +82,9 @@ async function draftContent(env, answers, company, brief) {
     if (!Array.isArray(data.observations) || !data.quote) throw new Error('incomplete draft');
     // belt and braces on the house style
     const clean = (v) => (typeof v === 'string' ? v.replace(/\s*[–—]\s*/g, ', ').replace(/(\w)-(\w)/g, '$1 $2') : Array.isArray(v) ? v.map(clean) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clean(x)])) : v);
-    return { data: clean(data), ai: true };
+    const out = clean(data);
+    for (const o of out.observations || []) { if (Array.isArray(o.steps)) o.diy = o.steps.filter(Boolean).slice(0, 3).join('\n'); delete o.steps; }
+    return { data: out, ai: true };
   } catch (e) {
     console.error('snapshot draft', e.message);
     return { data: fallback(answers), ai: false };
@@ -115,11 +117,13 @@ function visual(o, i, cat, rec, ed, E) {
   return `<div class="vis">${img ? `<img src="${esc(img)}" alt="${esc(o.title)}" loading="lazy">` : fixArt(cat)}${!img && stat ? stat : ''}</div>`;
 }
 
-function fixBlock(o, i, cat, rec, ed, track) {
+function fixBlock(o, i, cat, rec, ed, track, E) {
   // only the prospect's own view carries their token, so our clicks in review or present mode are never logged
-  const l = fixLinks(cat, track ? rec.pub : '');
-  const ctl = ed ? `<div class="ctl"><label>Fix type <select data-k="observations.${i}.category">${FIX_KEYS.map((k) => `<option value="${k}"${k === cat ? ' selected' : ''}>${esc(FIXES[k].label)}</option>`).join('')}</select></label><label>Picture URL <input data-k="observations.${i}.image" value="${esc(o.image || '')}" placeholder="Optional: paste a screenshot link"></label></div>` : '';
-  return `<div class="fix"><p class="k">Start fixing it</p><a class="diy" href="${l.diy}" target="_blank" rel="noopener">Free guide: ${esc(l.guide)} &rarr;</a><a class="dfy" href="${l.dfy}" target="_blank" rel="noopener">${esc(l.offer.cta)} <small>${esc(l.offer.name)}, ${esc(l.offer.price)}</small></a></div>${ctl}`;
+  const l = fixLinks(cat, track ? rec.pub : '', o.offer);
+  const diy = o.diy || ed ? `<p class="k sub">Do it yourself</p>${E(`observations.${i}.diy`, o.diy || '', 'p', 'steps')}` : '';
+  const btn = l.offer.inline ? `<a class="dfy" href="${l.dfy}">${esc(l.offer.cta)} <small>We cover this in ${esc(l.offer.name)}</small></a>` : `<a class="dfy" href="${l.dfy}" target="_blank" rel="noopener">${esc(l.offer.cta)} <small>${esc(l.offer.name)}, ${esc(l.offer.price)}</small></a>`;
+  const ctl = ed ? `<div class="ctl"><label>Done for you <select data-k="observations.${i}.offer">${OFFER_KEYS.map((k) => `<option value="${k}"${k === l.offerKey ? ' selected' : ''}>${esc(OFFER_LABELS[k])}</option>`).join('')}</select></label><label>Fix type <select data-k="observations.${i}.category">${FIX_KEYS.map((k) => `<option value="${k}"${k === cat ? ' selected' : ''}>${esc(FIXES[k].label)}</option>`).join('')}</select></label><label>Picture URL <input data-k="observations.${i}.image" value="${esc(o.image || '')}" placeholder="Optional: paste a screenshot link"></label></div>` : '';
+  return `<div class="fix"><p class="k">Start fixing it</p>${diy}${l.diy ? `<a class="diy" href="${l.diy}" target="_blank" rel="noopener">Free guide: ${esc(l.guide)} &rarr;</a>` : ''}${btn}</div>${ctl}`;
 }
 
 function doc(rec, mode) {
@@ -133,7 +137,7 @@ function doc(rec, mode) {
   const preview = mode === 'client';
   const allObs = (d.observations || []).slice(0, 3);
   const featured = Math.max(0, allObs.findIndex((o) => o && o.quick_win));
-  const obs = allObs.map((o, i) => [o, i]).filter(([, i]) => !preview || i === featured).map(([o, i]) => [o, i, fixCategory(o)]).map(([o, i, cat]) => `<div class="card">${visual(o, i, cat, rec, ed, E)}<div class="num">${i + 1}</div>${E(`observations.${i}.title`, o.title, 'h3')}<p class="k">What we saw</p>${E(`observations.${i}.saw`, o.saw, 'p')}<p class="k">Why it matters</p>${E(`observations.${i}.why`, o.why, 'p')}${o.quick_win || ed ? `<div class="qw"${!o.quick_win && ed ? ' data-empty="1"' : ''}><p class="k">Quick win</p>${E(`observations.${i}.quick_win`, o.quick_win || '', 'p')}</div>` : ''}${fixBlock(o, i, cat, rec, ed, preview)}</div>`).join('');
+  const obs = allObs.map((o, i) => [o, i]).filter(([, i]) => !preview || i === featured).map(([o, i]) => [o, i, fixCategory(o)]).map(([o, i, cat]) => `<div class="card">${visual(o, i, cat, rec, ed, E)}<div class="num">${i + 1}</div>${E(`observations.${i}.title`, o.title, 'h3')}<p class="k">What we saw</p>${E(`observations.${i}.saw`, o.saw, 'p')}<p class="k">Why it matters</p>${E(`observations.${i}.why`, o.why, 'p')}${o.quick_win || ed ? `<div class="qw"${!o.quick_win && ed ? ' data-empty="1"' : ''}><p class="k">Quick win</p>${E(`observations.${i}.quick_win`, o.quick_win || '', 'p')}</div>` : ''}${fixBlock(o, i, cat, rec, ed, preview, E)}</div>`).join('');
   const help = (d.help || []).map((h, i) => `<li><b>&#10003;</b><div>${E(`help.${i}.title`, h.title, 'strong')}${h.quote || ed ? `<small>&ldquo;${E(`help.${i}.quote`, h.quote || '')}&rdquo;</small>` : ''}</div></li>`).join('');
   const dates = (d.dates || []).map((t, i) => `<div class="dt">${E(`dates.${i}.when`, t.when, 'b')}${E(`dates.${i}.what`, t.what, 'span')}</div>`).join('');
   const att = (d.attendees || []).map((t, i) => `<li>${E(`attendees.${i}.name`, t.name, 'b')} &middot; ${E(`attendees.${i}.role`, t.role)}</li>`).join('');
@@ -150,7 +154,7 @@ ${preview ? `<section class="sec"><p class="label">The first opportunity we spot
 <section class="sec two"><div><p class="label">What you told us you want help with</p><ul class="help">${help}</ul></div>
 <div>${dates ? `<p class="label">Key dates you mentioned</p><div class="dates">${dates}</div>` : ''}${att ? `<p class="label">Who should join the walkthrough</p><ul class="att">${att}</ul>` : ''}</div></section>
 ${!preview && d.recommendation && (d.recommendation.offer || ed) ? `<section class="sec rec"><p class="label">Our recommendation</p><h3>${E('recommendation.offer', d.recommendation.offer || '')}</h3>${E('recommendation.why', d.recommendation.why || '', 'p')}</section>` : ''}
-<section class="sec next"><p class="label">Where we go from here</p>${E('next', d.next, 'p')}${walkthroughBlock(rec, mode)}</section>
+<section class="sec next" id="next"><p class="label">Where we go from here</p>${E('next', d.next, 'p')}${walkthroughBlock(rec, mode)}</section>
 <footer class="sig"><img src="${AVATAR}" alt="Markit Mike"><div><b>Markit Mike</b><span>Markit Mike Agency&trade;</span><span>(714) 919 9469 &middot; team@markitmike.com &middot; markitmike.com</span></div></footer>
 </article>`;
 }
@@ -189,7 +193,7 @@ blockquote{margin:0;padding-left:16px;border-left:3px solid var(--gold);font:ita
 .card h3{margin:0 36px 10px 0;font:900 17px/1.2 Montserrat,Arial;color:var(--ink)}.card p{margin:0 0 8px;font-size:14px}.k{margin:0!important;font:800 10px Montserrat,Arial!important;letter-spacing:.16em;text-transform:uppercase;color:var(--teal)}
 .vis{position:relative;margin:-16px -16px 14px;border-radius:14px 14px 0 0;overflow:hidden;background:#F7F4FB;aspect-ratio:16/9}.vis svg,.vis img{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
 .stat{position:absolute;left:12px;bottom:12px;display:grid;gap:1px;padding:8px 12px;border-radius:12px;background:#fff;box-shadow:0 6px 16px rgba(43,15,99,.18);min-width:96px}.stat b{font:900 24px/1 Montserrat,Arial;color:var(--purple)}.stat span{font:700 11px Inter,Arial;color:#5a5372}.stat em{font:800 10px Montserrat,Arial;font-style:normal;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
-.fix{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);display:grid;gap:8px}.fix .k{color:var(--purple)}.diy{color:var(--teal);font-weight:700;font-size:14px;text-decoration:none}.dfy{display:block;text-align:center;padding:10px 14px;border-radius:999px;background:linear-gradient(135deg,#FFE08A,#E79A27 55%,#C06F14);color:#2A0E52;font:900 14px Montserrat,Arial;text-decoration:none}.dfy small{display:block;font:600 11px Inter,Arial;opacity:.8}
+.fix{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);display:grid;gap:8px}.fix .k{color:var(--purple)}.fix .sub{color:var(--teal)!important;font-size:9px!important}.steps{white-space:pre-line;font-size:13.5px!important;margin:0!important;padding-left:10px;border-left:3px solid var(--gold)}.diy{color:var(--teal);font-weight:700;font-size:14px;text-decoration:none}.dfy{display:block;text-align:center;padding:10px 14px;border-radius:999px;background:linear-gradient(135deg,#FFE08A,#E79A27 55%,#C06F14);color:#2A0E52;font:900 14px Montserrat,Arial;text-decoration:none}.dfy small{display:block;font:600 11px Inter,Arial;opacity:.8}
 .ctl{margin-top:10px;padding:10px;border-radius:10px;background:#1D0A40;color:#FBE7C6;display:grid;gap:6px;font:700 11px Inter,Arial}.ctl label{display:grid;gap:3px}.ctl select,.ctl input{font:13px Inter,Arial;padding:6px 8px;border-radius:6px;border:0}
 .qw{margin-top:8px;padding:10px 12px;border-radius:10px;background:#FDF4E7}.qw .k{color:#9A5B00}.plan{color:#7A7388;font-style:italic}
 .sum p{margin:0;padding:16px 18px;border-radius:14px;background:linear-gradient(110deg,var(--soft),#FDF4E7);font-size:16px;color:var(--ink)}
