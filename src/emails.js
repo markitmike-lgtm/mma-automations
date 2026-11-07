@@ -1,3 +1,4 @@
+import { briefEmailBlock } from './research.js';
 // Branded, table based HTML emails. Inline styles only, 600px, works in Gmail,
 // Apple Mail and Outlook. Headers are hosted on markitmike.com.
 const IMG = 'https://markitmike.com/wp-content/uploads/2026/11/';
@@ -122,7 +123,7 @@ export function leadReplyEmail({ firstName }) {
   };
 }
 
-export function ownerLeadEmail({ name, email, phone, company, message, page, dealCreated, optIn, src, contactId, dealId }) {
+export function ownerLeadEmail({ name, email, phone, company, message, page, dealCreated, optIn, src, contactId, dealId, website, brief }) {
   const HS = 'https://app-na2.hubspot.com/contacts/246716405/record';
   const btn = (href, label, solid) => `<a href="${href}" style="display:inline-block;margin:0 8px 8px 0;padding:11px 18px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;${solid ? 'background:#5D0EA6;color:#ffffff;' : 'background:#ffffff;color:#5D0EA6;border:2px solid #5D0EA6;'}">${label}</a>`;
   const buttons = [
@@ -138,8 +139,9 @@ export function ownerLeadEmail({ name, email, phone, company, message, page, dea
 <p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:2px;color:#5D0EA6;">NEW WEBSITE LEAD</p>
 <p style="margin:0 0 16px;font-size:20px;font-weight:800;">${esc(name)}${company ? ' &middot; ' + esc(company) : ''}</p>
 <div style="margin:0 0 14px;">${buttons}</div>
-<table role="presentation" cellpadding="0" cellspacing="0">${row('Email', `<a href="mailto:${esc(email)}">${esc(email)}</a>`)}${row('Phone', phone ? `<a href="tel:${esc(phone.replace(/[^0-9+]/g, ''))}">${esc(phone)}</a>` : 'Not given')}${row('Page', esc(page || 'Contact'))}${row('Email list', optIn ? '<b style="color:#108193;">Opted in</b>' : 'Not opted in')}${row('Came from', esc(src || 'unknown'))}</table>
+<table role="presentation" cellpadding="0" cellspacing="0">${row('Email', `<a href="mailto:${esc(email)}">${esc(email)}</a>`)}${row('Phone', phone ? `<a href="tel:${esc(phone.replace(/[^0-9+]/g, ''))}">${esc(phone)}</a>` : 'Not given')}${website ? row('Website', `<a href="https://${esc(website)}">${esc(website)}</a>`) : ''}${row('Page', esc(page || 'Contact'))}${row('Email list', optIn ? '<b style="color:#108193;">Opted in</b>' : 'Not opted in')}${row('Came from', esc(src || 'unknown'))}</table>
 <div style="margin:16px 0;padding:14px 16px;background:#F6F2FB;border-left:4px solid #E79A27;border-radius:8px;font-size:15px;line-height:23px;white-space:pre-wrap;">${esc(message) || '(no message)'}</div>
+${briefEmailBlock(brief)}
 <p style="font-size:14px;line-height:22px;">Already done for you: ${dealCreated ? 'contact and deal created in HubSpot (Prospect)' : 'contact updated in HubSpot (they already have an open deal)'}, a branded reply with the Crown Fitting link sent, and a reply task due tomorrow.</p>
 <p style="font-size:14px;line-height:22px;"><b>Your move:</b> reply personally within 24 hours. Just hit reply to this email to write to them.</p></div>`,
   };

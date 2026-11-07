@@ -67,12 +67,12 @@ function fallback(a) {
   };
 }
 
-async function draftContent(env, answers, company) {
+async function draftContent(env, answers, company, brief) {
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', ...(env.ANTHROPIC_WORKSPACE_ID ? { 'anthropic-workspace-id': env.ANTHROPIC_WORKSPACE_ID } : {}) },
-      body: JSON.stringify({ model: env.CHAMBERLAIN_MODEL || 'claude-sonnet-5-5', max_tokens: 2000, system: SYSTEM, messages: [{ role: 'user', content: `Business: ${company}\n\nCrown Fitting notes:\n${notesText(answers)}` }] }),
+      body: JSON.stringify({ model: env.CHAMBERLAIN_MODEL || 'claude-sonnet-5-5', max_tokens: 2000, system: SYSTEM, messages: [{ role: 'user', content: `Business: ${company}\n\nCrown Fitting notes:\n${notesText(answers)}${brief?.data ? `\n\nPre-call research from public sources (use it only where the call notes agree or are silent, never over them, and never mention that research was done):\n${JSON.stringify({ business: brief.data.business, locations: brief.data.locations, reviews: brief.data.reviews, digital: brief.data.digital, observations: brief.data.observations })}` : ''}` }] }),
     });
     if (!r.ok) throw new Error(`anthropic ${r.status} ${(await r.text()).slice(0, 200)}`);
     const j = await r.json();
@@ -90,7 +90,8 @@ async function draftContent(env, answers, company) {
 
 // called after Crown Fitting Notes are saved; returns the review link
 export async function buildSnapshot(env, x, { dealId, contactId, answers, who, company, firstName }) {
-  const { data, ai } = await draftContent(env, answers, company || who);
+  const brief = await env.REPORTS.get(`brief:${dealId}`, 'json').catch(() => null);
+  const { data, ai } = await draftContent(env, answers, company || who, brief);
   const prev = await env.REPORTS.get(`snapdeal:${dealId}`);
   const tok = prev || token();
   // a redraft (notes resubmitted) keeps the same review link, client link and HubSpot task

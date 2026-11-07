@@ -12,6 +12,7 @@ import { reportRoute } from './report.js';
 import { unsubscribeRoute, seenRoute, sequenceSummary } from './sequence.js';
 import { fittingRoute, answersToMarkdown } from './fitting.js';
 import { snapshotReview, snapshotClient } from './snapshot.js';
+import { queueBrief, siteFor } from './research.js';
 import { bookRoute } from './schedule.js';
 import { kitRoute } from './kits.js';
 import { startClientBuild, scheduleTimeline, approveRoute, portalRoute } from './fulfill.js';
@@ -339,6 +340,7 @@ async function lead(req, env) {
   const clean = (v, n) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, (c) => (c === '\n' ? '\n' : ' ')).trim().slice(0, n);
   const name = clean(f.name, 120), email = clean(f.email, 160).toLowerCase(), company = clean(f.company, 160);
   const phone = clean(f.phone, 40), message = clean(f.message, 5000), page = clean(f.page, 200);
+  const siteUrl = clean(f.site_url, 200);
   const optIn = f.optIn === true, src = srcText(f.src);
   // spam traps: hidden field filled in, or submitted faster than a person can type
   if (f.website || (Number(f.elapsed) > 0 && Number(f.elapsed) < 2500)) return out({ ok: true });
@@ -364,7 +366,7 @@ async function lead(req, env) {
     return out({ ok: true });
   }
   if (!contact) {
-    contact = await hs(env, 'POST', '/crm/v3/objects/contacts', { properties: { email, firstname, lastname, phone, company, hs_lead_status: 'NEW' } });
+    contact = await hs(env, 'POST', '/crm/v3/objects/contacts', { properties: { email, firstname, lastname, phone, company, hs_lead_status: 'NEW', ...(siteUrl ? { website: siteUrl } : {}) } });
   } else {
     const upd = {};
     if (phone) upd.phone = phone;
@@ -395,8 +397,11 @@ async function lead(req, env) {
   }));
   if (optIn) tasks.push(recordOptIn(env, contact.id, email, 'Contact form'));
   tasks.push(sendAndLog(env, { to: email, contact, deal, ...leadReplyEmail({ firstName: firstname }) }));
-  const owner = ownerLeadEmail({ name, email, phone, company, message, page, dealCreated, optIn, src, contactId: contact && contact.id, dealId: deal && deal.id });
-  tasks.push(sendRaw(env, { to: env.OWNER_EMAIL, reply_to: email, ...owner }));
+  // research the business first; the one alert goes out with the Pre-Call Brief inside (a few minutes)
+  const website = siteFor({ email, website: siteUrl });
+  const alertInfo = { name, email, phone, company, message, page, dealCreated, optIn, src, contactId: contact && contact.id, dealId: deal && deal.id, website };
+  const queued = deal?.id ? await queueBrief(env, { dealId: deal.id, contactId: contact.id, name, email, company, website: siteUrl, message, source: `website form (${page || 'Contact'})`, alert: alertInfo }).catch((e) => { console.error('queue brief', e.message); return false; }) : false;
+  if (!queued) tasks.push(sendRaw(env, { to: env.OWNER_EMAIL, reply_to: email, ...ownerLeadEmail(alertInfo) }));
   const results = await Promise.allSettled(tasks);
   results.forEach((r) => r.status === 'rejected' && console.error('lead step failed', r.reason && r.reason.message));
   return out({ ok: true });
@@ -534,6 +539,11 @@ async function check(env) {
       });
       if (!r.ok) throw new Error(`${r.status} ${(await r.text()).slice(0, 500)}`);
     }),
+    calendar: env.GCAL_URL && env.GCAL_SECRET ? await tryIt(async () => {
+      const r = await fetch(env.GCAL_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: env.GCAL_SECRET, action: 'ping' }) });
+      const j = await r.json();
+      if (!j.ok) throw new Error(JSON.stringify(j).slice(0, 300));
+    }) : 'NOT CONNECTED (GCAL_URL and GCAL_SECRET missing)',
     hubspot_meetings: await tryIt(() => hs(env, 'POST', '/crm/v3/objects/meetings/search', { limit: 1 })),
     hubspot_tasks: await tryIt(() => hs(env, 'POST', '/crm/v3/objects/tasks/search', { limit: 1 })),
     resend: await tryIt(async () => {

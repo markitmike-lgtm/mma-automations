@@ -116,6 +116,17 @@ export async function contextPanel(env, x, ref, cp) {
     }
   } catch (e) { console.error('fitting context', e.message); }
   if (cp.company) items.unshift(['Company', cp.company]);
+  // the Pre-Call Brief, when research ran on this lead
+  const brief = ref.dealId ? await env.REPORTS.get(`brief:${ref.dealId}`, 'json').catch(() => null) : null;
+  if (brief?.data) {
+    const d = brief.data;
+    items.push(['Pre-Call Brief', d.headline]);
+    if (brief.page?.url) items.push(['Website', brief.page.url]);
+    if (d.reviews?.rating && d.reviews.rating !== 'Not found') items.push(['Reviews', [d.reviews.rating, d.reviews.count].filter((v) => v && v !== 'Not found').join(', ') + (d.reviews.complaints ? `. Complaints: ${d.reviews.complaints}` : '')]);
+    (d.observations || []).forEach((o, i) => items.push([`Observation ${i + 1}`, `${o.title}. ${o.saw}`]));
+    if ((d.questions || []).length) items.push(['Ask them', d.questions.join(' · ')]);
+    if (d.confirm) items.push(['Confirm on the call', d.confirm]);
+  }
   if (!items.length) items.push(['Before the call', 'Nothing on file yet beyond their name and email. Look up their website and Google profile for two minutes before you start.']);
   return `<section class="card known"><h2><b>&#9733;</b>What we already know</h2><dl>${items.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl></section>`;
 }
