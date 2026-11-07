@@ -12,6 +12,7 @@ import { reportRoute } from './report.js';
 import { unsubscribeRoute, seenRoute, sequenceSummary } from './sequence.js';
 import { fittingRoute, answersToMarkdown } from './fitting.js';
 import { snapshotReview, snapshotClient } from './snapshot.js';
+import { fixRoute } from './fixes.js';
 import { queueBrief, siteFor } from './research.js';
 import { bookRoute } from './schedule.js';
 import { kitRoute } from './kits.js';
@@ -45,6 +46,7 @@ export default {
       if ((req.method === 'GET' || req.method === 'POST') && url.pathname.startsWith('/approve/')) return await approveRoute(req, env, X());
       if ((req.method === 'GET' || req.method === 'POST') && url.pathname.startsWith('/portal/')) return await portalRoute(req, env, X());
       if ((req.method === 'GET' || req.method === 'POST') && url.pathname.startsWith('/book/')) return await bookRoute(req, env, X());
+      if (req.method === 'GET' && url.pathname.startsWith('/fix/')) return await fixRoute(req, env, X(), ctx);
       if (req.method === 'GET' && url.pathname.startsWith('/s/')) return await snapshotClient(req, env, X());
       if (url.pathname === '/lead') return await lead(req, env);
       if (req.method === 'GET' && url.pathname === '/site.js') return new Response(SITE_JS.replace('__GA4__', env.GA4_ID || '').replace('__API__', url.origin), { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });

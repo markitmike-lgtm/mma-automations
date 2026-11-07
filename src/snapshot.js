@@ -6,6 +6,7 @@ import { snapshotEmail } from './emails.js';
 import { FIT_SECTIONS } from './fitting.js';
 import { CROWN_SCORES } from './crown.js';
 import { offerTimes, shortWhen } from './schedule.js';
+import { FIXES, FIX_KEYS, fixCategory, fixArt, fixLinks } from './fixes.js';
 
 const WORKER = 'https://mma-automations.markitmike.workers.dev';
 const LOGO = 'https://markitmike.com/wp-content/uploads/2026/11/mma-logo-reverse-tight.png';
@@ -29,7 +30,7 @@ Return ONLY a JSON object with exactly these keys:
  "quote": "their single most telling line from the notes, lightly cleaned up, in their words (no quote marks)",
  "quote_label": "what the quote is, for example Your 90 day goal, in your words",
  "where": ["2 or 3 short statements about where things stand today"],
- "observations": [{"title": "3 to 5 word title", "saw": "what we saw, one sentence", "why": "why it matters, one sentence", "quick_win": "one concrete action they can take this week, or empty string"}],
+ "observations": [{"title": "3 to 5 word title", "saw": "what we saw, one sentence", "why": "why it matters, one sentence", "quick_win": "one concrete action they can take this week, or empty string", "category": "one of google, reviews, website, social, loyalty, opening, brand", "stat_value": "one number from the notes or research that shows this gap, for example 3.8 or 12, or empty string", "stat_label": "what that number is, for example Google rating, or empty string", "stat_goal": "a target for that number only if the notes give one, else empty string"}],
  "summary": "one bold sentence that ties their goal to the biggest gap",
  "summary_more": "one supporting sentence",
  "help": [{"title": "what they want help with, short", "quote": "their words if the notes have them, else empty string"}],
@@ -38,7 +39,7 @@ Return ONLY a JSON object with exactly these keys:
  "recommendation": {"offer": "the recommended offer from the notes, or empty", "why": "one or two sentences on why it fits"},
  "next": "one sentence on the next step: the plan walkthrough"
 }
-Exactly 3 observations. Up to 3 help items. dates and attendees may be empty arrays if the notes have none. Only one observation may have a quick_win; the others use empty string.`;
+Exactly 3 observations. Up to 3 help items. dates and attendees may be empty arrays if the notes have none. Only one observation may have a quick_win; the others use empty string. Pick the category that best matches where the fix lives. Never invent a stat; leave the stat fields empty unless the number is written in the notes or research.`;
 
 function notesText(a) {
   const out = [];
@@ -92,14 +93,33 @@ async function draftContent(env, answers, company, brief) {
 export async function buildSnapshot(env, x, { dealId, contactId, answers, who, company, firstName }) {
   const brief = await env.REPORTS.get(`brief:${dealId}`, 'json').catch(() => null);
   const { data, ai } = await draftContent(env, answers, company || who, brief);
+  let site = brief?.page?.url || (brief?.site ? `https://${brief.site}/` : '');
+  if (!site) { const c = await x.hs(env, 'GET', `/crm/v3/objects/contacts/${contactId}?properties=website`).catch(() => null); const w = c?.properties?.website; if (w) site = /^https?:/i.test(w) ? w : `https://${w}`; }
+  // ask the screenshot service to start rendering now, so the image is ready when the Snapshot is opened
+  if (site) fetch(shot(site)).catch(() => {});
   const prev = await env.REPORTS.get(`snapdeal:${dealId}`);
   const tok = prev || token();
   // a redraft (notes resubmitted) keeps the same review link, client link and HubSpot task
   const old = prev ? await env.REPORTS.get(`snap:${prev}`, 'json') : null;
-  const rec = { dealId: String(dealId), contactId: String(contactId), company: company || who, who, firstName, date: new Date().toISOString(), scores: Object.fromEntries(SCORES.map(([k]) => [k, Number(answers[k]) || null])), data, ai, status: 'draft', pub: old?.pub || token(16), ...(old?.taskId ? { taskId: old.taskId } : {}) };
+  const rec = { dealId: String(dealId), contactId: String(contactId), company: company || who, who, firstName, date: new Date().toISOString(), scores: Object.fromEntries(SCORES.map(([k]) => [k, Number(answers[k]) || null])), data, ai, site: site || old?.site || '', status: 'draft', pub: old?.pub || token(16), ...(old?.taskId ? { taskId: old.taskId } : {}) };
   await env.REPORTS.put(`snap:${tok}`, JSON.stringify(rec));
   await env.REPORTS.put(`snapdeal:${dealId}`, tok);
   return { url: `${WORKER}/snapshot/${tok}`, ai };
+}
+
+const shot = (site) => `https://s.wordpress.com/mshots/v1/${encodeURIComponent(site)}?w=960&h=540`;
+
+function visual(o, i, cat, rec, ed, E) {
+  const img = /^https:\/\/\S+$/.test(o.image || '') ? o.image : cat === 'website' && rec.site ? shot(rec.site) : '';
+  const stat = o.stat_value || ed ? `<div class="stat">${E(`observations.${i}.stat_value`, o.stat_value || '', 'b')}${E(`observations.${i}.stat_label`, o.stat_label || '', 'span')}${o.stat_goal || ed ? `<em>Goal ${E(`observations.${i}.stat_goal`, o.stat_goal || '')}</em>` : ''}</div>` : '';
+  return `<div class="vis">${img ? `<img src="${esc(img)}" alt="${esc(o.title)}" loading="lazy">` : fixArt(cat)}${!img && stat ? stat : ''}</div>`;
+}
+
+function fixBlock(o, i, cat, rec, ed, track) {
+  // only the prospect's own view carries their token, so our clicks in review or present mode are never logged
+  const l = fixLinks(cat, track ? rec.pub : '');
+  const ctl = ed ? `<div class="ctl"><label>Fix type <select data-k="observations.${i}.category">${FIX_KEYS.map((k) => `<option value="${k}"${k === cat ? ' selected' : ''}>${esc(FIXES[k].label)}</option>`).join('')}</select></label><label>Picture URL <input data-k="observations.${i}.image" value="${esc(o.image || '')}" placeholder="Optional: paste a screenshot link"></label></div>` : '';
+  return `<div class="fix"><p class="k">Start fixing it</p><a class="diy" href="${l.diy}" target="_blank" rel="noopener">Free guide: ${esc(l.guide)} &rarr;</a><a class="dfy" href="${l.dfy}" target="_blank" rel="noopener">${esc(l.offer.cta)} <small>${esc(l.offer.name)}, ${esc(l.offer.price)}</small></a></div>${ctl}`;
 }
 
 function doc(rec, mode) {
@@ -113,7 +133,7 @@ function doc(rec, mode) {
   const preview = mode === 'client';
   const allObs = (d.observations || []).slice(0, 3);
   const featured = Math.max(0, allObs.findIndex((o) => o && o.quick_win));
-  const obs = allObs.map((o, i) => [o, i]).filter(([, i]) => !preview || i === featured).map(([o, i]) => `<div class="card"><div class="num">${i + 1}</div>${E(`observations.${i}.title`, o.title, 'h3')}<p class="k">What we saw</p>${E(`observations.${i}.saw`, o.saw, 'p')}<p class="k">Why it matters</p>${E(`observations.${i}.why`, o.why, 'p')}${o.quick_win || ed ? `<div class="qw"${!o.quick_win && ed ? ' data-empty="1"' : ''}><p class="k">Quick win</p>${E(`observations.${i}.quick_win`, o.quick_win || '', 'p')}</div>` : '<p class="plan">The full fix is in your plan.</p>'}</div>`).join('');
+  const obs = allObs.map((o, i) => [o, i]).filter(([, i]) => !preview || i === featured).map(([o, i]) => [o, i, fixCategory(o)]).map(([o, i, cat]) => `<div class="card">${visual(o, i, cat, rec, ed, E)}<div class="num">${i + 1}</div>${E(`observations.${i}.title`, o.title, 'h3')}<p class="k">What we saw</p>${E(`observations.${i}.saw`, o.saw, 'p')}<p class="k">Why it matters</p>${E(`observations.${i}.why`, o.why, 'p')}${o.quick_win || ed ? `<div class="qw"${!o.quick_win && ed ? ' data-empty="1"' : ''}><p class="k">Quick win</p>${E(`observations.${i}.quick_win`, o.quick_win || '', 'p')}</div>` : ''}${fixBlock(o, i, cat, rec, ed, preview)}</div>`).join('');
   const help = (d.help || []).map((h, i) => `<li><b>&#10003;</b><div>${E(`help.${i}.title`, h.title, 'strong')}${h.quote || ed ? `<small>&ldquo;${E(`help.${i}.quote`, h.quote || '')}&rdquo;</small>` : ''}</div></li>`).join('');
   const dates = (d.dates || []).map((t, i) => `<div class="dt">${E(`dates.${i}.when`, t.when, 'b')}${E(`dates.${i}.what`, t.what, 'span')}</div>`).join('');
   const att = (d.attendees || []).map((t, i) => `<li>${E(`attendees.${i}.name`, t.name, 'b')} &middot; ${E(`attendees.${i}.role`, t.role)}</li>`).join('');
@@ -167,6 +187,10 @@ blockquote{margin:0;padding-left:16px;border-left:3px solid var(--gold);font:ita
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card{position:relative;border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 6px 18px rgba(43,15,99,.07)}
 .card .num{position:absolute;right:14px;top:14px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:900 13px Montserrat,Arial;color:#fff;background:linear-gradient(135deg,var(--gold),var(--purple))}
 .card h3{margin:0 36px 10px 0;font:900 17px/1.2 Montserrat,Arial;color:var(--ink)}.card p{margin:0 0 8px;font-size:14px}.k{margin:0!important;font:800 10px Montserrat,Arial!important;letter-spacing:.16em;text-transform:uppercase;color:var(--teal)}
+.vis{position:relative;margin:-16px -16px 14px;border-radius:14px 14px 0 0;overflow:hidden;background:#F7F4FB;aspect-ratio:16/9}.vis svg,.vis img{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
+.stat{position:absolute;left:12px;bottom:12px;display:grid;gap:1px;padding:8px 12px;border-radius:12px;background:#fff;box-shadow:0 6px 16px rgba(43,15,99,.18);min-width:96px}.stat b{font:900 24px/1 Montserrat,Arial;color:var(--purple)}.stat span{font:700 11px Inter,Arial;color:#5a5372}.stat em{font:800 10px Montserrat,Arial;font-style:normal;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
+.fix{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);display:grid;gap:8px}.fix .k{color:var(--purple)}.diy{color:var(--teal);font-weight:700;font-size:14px;text-decoration:none}.dfy{display:block;text-align:center;padding:10px 14px;border-radius:999px;background:linear-gradient(135deg,#FFE08A,#E79A27 55%,#C06F14);color:#2A0E52;font:900 14px Montserrat,Arial;text-decoration:none}.dfy small{display:block;font:600 11px Inter,Arial;opacity:.8}
+.ctl{margin-top:10px;padding:10px;border-radius:10px;background:#1D0A40;color:#FBE7C6;display:grid;gap:6px;font:700 11px Inter,Arial}.ctl label{display:grid;gap:3px}.ctl select,.ctl input{font:13px Inter,Arial;padding:6px 8px;border-radius:6px;border:0}
 .qw{margin-top:8px;padding:10px 12px;border-radius:10px;background:#FDF4E7}.qw .k{color:#9A5B00}.plan{color:#7A7388;font-style:italic}
 .sum p{margin:0;padding:16px 18px;border-radius:14px;background:linear-gradient(110deg,var(--soft),#FDF4E7);font-size:16px;color:var(--ink)}
 .two{display:grid;grid-template-columns:1.3fr 1fr;gap:28px}.help,.att{list-style:none;margin:0;padding:0;display:grid;gap:10px}.help li{display:flex;gap:10px}.help li>b{color:var(--gold)}
@@ -181,7 +205,7 @@ blockquote{margin:0;padding-left:16px;border-left:3px solid var(--gold);font:ita
 .bar p{margin:0;font-size:14px}.bar .b{display:flex;gap:10px;flex-wrap:wrap}.bar button{border:0;border-radius:999px;padding:10px 18px;font:800 14px Montserrat,Arial;cursor:pointer}
 .save{background:#fff;color:#1D0A40}.send{background:linear-gradient(135deg,#FFE08A,#E79A27 55%,#C06F14);color:#2A0E52}.bar button[disabled]{opacity:.6;cursor:wait}
 @media (max-width:720px){.heard,.two{grid-template-columns:1fr}.cards{grid-template-columns:1fr}.sec{padding:20px 20px 0}.hdr{padding:22px 20px 50px}.sig{margin:22px 20px 0}.sc{grid-template-columns:130px 1fr 40px}}
-@media print{body{background:#fff}.bar{display:none}.snap{box-shadow:none;margin:0;border-radius:0}}
+@media print{body{background:#fff}.bar,.ctl{display:none}.snap{box-shadow:none;margin:0;border-radius:0}}
 `;
 
 function html(title, body, extraHead = '') {
@@ -238,7 +262,7 @@ export async function snapshotReview(req, env, x) {
   if (new URL(req.url).searchParams.get('present') === '1') return html(`Snapshot: ${rec.company}`, doc(rec, 'present'));
   const sent = rec.status === 'sent';
   const bar = `<div class="bar"><p>${sent ? '<b>Sent.</b> Edits you save now also update what they see.' : rec.ai ? '<b>Draft ready.</b> Click any text to edit it, then Save or Approve and send. They get a preview: What we heard and the observation with the quick win. The rest is for the walkthrough.' : '<b>Starter draft.</b> The AI draft was unavailable, so this was built straight from your notes. Edit, then send.'}</p><div class="b"><span id="st" style="align-self:center;font-size:13px;opacity:.8"></span><button class="save" id="save" type="button">Save</button><a href="${WORKER}/snapshot/${tok}?present=1" target="_blank" rel="noopener" style="color:#FBE7C6;align-self:center;font-weight:800;font-size:14px">Present full</a>${sent ? `<a href="${WORKER}/s/${rec.pub}?by=${tok}" target="_blank" rel="noopener" style="color:#FBE7C6;align-self:center;font-weight:800;font-size:14px">Their preview</a>` : '<button class="send" id="send" type="button">Approve and send</button>'}</div></div>`;
-  const js = `<script>(function(){var st=document.getElementById('st');function edits(){var o={};document.querySelectorAll('[data-k]').forEach(function(el){o[el.getAttribute('data-k')]=el.innerText;});return o;}
+  const js = `<script>(function(){var st=document.getElementById('st');function edits(){var o={};document.querySelectorAll('[data-k]').forEach(function(el){o[el.getAttribute('data-k')]=(el.tagName==='SELECT'||el.tagName==='INPUT')?el.value:el.innerText;});return o;}
 function go(action,btn){btn.disabled=true;st.textContent=action==='send'?'Sending...':'Saving...';fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({edits:edits(),action:action})}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Something went wrong');return d;});}).then(function(d){st.textContent=d.message;btn.disabled=false;if(action==='send')setTimeout(function(){location.reload();},1200);}).catch(function(e){st.textContent=e.message;btn.disabled=false;});}
 document.getElementById('save').onclick=function(){go('save',this);};var s=document.getElementById('send');if(s)s.onclick=function(){go('send',this);};
 document.addEventListener('paste',function(e){if(e.target.closest&&e.target.closest('[contenteditable]')){e.preventDefault();document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text'));}});})();</script>`;
