@@ -6,6 +6,24 @@
 export const SITE_JS = String.raw`(function(){
 if (window.__mmaSite) return; window.__mmaSite = 1;
 var GA = '__GA4__', API = '__API__';
+// "this device is me": open any page with ?mma=me once per browser to stop counting your own visits
+// (Google Analytics, HubSpot and outreach click alerts); ?mma=reset turns counting back on.
+var ME = false;
+(function(){
+  var m = new URLSearchParams(location.search).get('mma');
+  try {
+    if (m === 'me') localStorage.setItem('mma-me', '1');
+    if (m === 'reset') localStorage.removeItem('mma-me');
+    ME = localStorage.getItem('mma-me') === '1';
+  } catch (e) {}
+  if (m === 'me' || m === 'reset') {
+    var n = document.createElement('div');
+    n.textContent = m === 'me' ? 'This browser is now marked as you. Your visits will not be counted.' : 'This browser is counted again.';
+    n.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:99999;background:#1D0A40;color:#fff;padding:12px 18px;border-radius:12px;font:600 14px Montserrat,Arial,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90vw;text-align:center';
+    (document.body ? Promise.resolve() : new Promise(function(r){ document.addEventListener('DOMContentLoaded', r); })).then(function(){ document.body.appendChild(n); setTimeout(function(){ n.remove(); }, 6000); });
+  }
+})();
+if (ME) { (window._hsq = window._hsq || []).push(['doNotTrack']); GA = ''; }
 window.dataLayer = window.dataLayer || [];
 window.gtag = window.gtag || function(){ dataLayer.push(arguments); };
 if (GA) {
@@ -28,7 +46,7 @@ function getSrc(){ try { var v = JSON.parse(localStorage.getItem(KEY) || 'null')
 window.mmaSource = function(){ var v = getSrc() || {}; return { utm: v.utm || {}, ref: v.ref || 'direct', landing: v.landing || location.pathname, page: location.pathname }; };
 
 // a prospect from our outreach email landed here (?mmc=token): tell the worker once per visit
-(function(){ var t = new URLSearchParams(location.search).get('mmc'); if (!t) return;
+(function(){ var t = new URLSearchParams(location.search).get('mmc'); if (!t || ME) return;
   var body = JSON.stringify({ t: t, page: location.pathname });
   try { navigator.sendBeacon ? navigator.sendBeacon(API + '/seen', new Blob([body], { type: 'text/plain' })) : fetch(API + '/seen', { method: 'POST', body: body, keepalive: true }); } catch (x) {}
   window.mmaTrack('outreach_click', { page_path: location.pathname });
