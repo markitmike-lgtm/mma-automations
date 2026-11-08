@@ -12,6 +12,7 @@ import { reportRoute } from './report.js';
 import { unsubscribeRoute, seenRoute, sequenceSummary } from './sequence.js';
 import { fittingRoute, answersToMarkdown } from './fitting.js';
 import { snapshotReview, snapshotClient } from './snapshot.js';
+import { partnerJoin } from './partners.js';
 import { fixRoute } from './fixes.js';
 import { queueBrief, siteFor } from './research.js';
 import { bookRoute } from './schedule.js';
@@ -49,6 +50,7 @@ export default {
       if (req.method === 'GET' && url.pathname.startsWith('/fix/')) return await fixRoute(req, env, X(), ctx);
       if (req.method === 'GET' && url.pathname.startsWith('/s/')) return await snapshotClient(req, env, X());
       if (url.pathname === '/lead') return await lead(req, env);
+      if (url.pathname === '/partner') return await partnerJoin(req, env, X());
       if (req.method === 'GET' && url.pathname === '/site.js') return new Response(SITE_JS.replace('__GA4__', env.GA4_ID || '').replace('__API__', url.origin), { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300' } });
       if (url.pathname === '/subscribe') return await subscribe(req, env);
       if (req.method === 'GET' && url.pathname === '/setup/optin') return await setupOptIn(env);
@@ -437,7 +439,7 @@ async function tooMany(req, bucket, max) {
 function srcText(src) {
   if (!src || typeof src !== 'object') return 'unknown';
   const u = src.utm || {};
-  const parts = [u.utm_source && `utm_source=${u.utm_source}`, u.utm_medium && `utm_medium=${u.utm_medium}`, u.utm_campaign && `utm_campaign=${u.utm_campaign}`, u.gclid && 'Google Ads click', u.fbclid && 'Meta ad click']
+  const parts = [u.utm_source && `utm_source=${u.utm_source}`, u.utm_medium && `utm_medium=${u.utm_medium}`, u.utm_campaign && `utm_campaign=${u.utm_campaign}`, u.ref && `partner ref=${u.ref}`, u.gclid && 'Google Ads click', u.fbclid && 'Meta ad click']
     .filter(Boolean);
   return String([parts.join(', ') || `referrer: ${src.ref || 'direct'}`, `landing page: ${src.landing || '?'}`, src.page && `converted on: ${src.page}`].filter(Boolean).join(' | ')).slice(0, 400);
 }

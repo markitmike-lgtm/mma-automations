@@ -37,7 +37,7 @@ var KEY = 'mma-src';
 function getSrc(){ try { var v = JSON.parse(localStorage.getItem(KEY) || 'null'); if (v && Date.now() - v.t < 90 * 864e5) return v; } catch (e) {} return null; }
 (function(){
   var q = new URLSearchParams(location.search), utm = {};
-  ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid'].forEach(function(k){ if (q.get(k)) utm[k] = q.get(k).slice(0, 120); });
+  ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid', 'ref'].forEach(function(k){ if (q.get(k)) utm[k] = q.get(k).slice(0, 120); });
   var ext = document.referrer && document.referrer.indexOf(location.host) < 0 ? document.referrer.slice(0, 200) : '';
   if (!getSrc() || Object.keys(utm).length) {
     try { localStorage.setItem(KEY, JSON.stringify({ t: Date.now(), utm: utm, ref: ext || (getSrc() || {}).ref || 'direct', landing: location.pathname })); } catch (e) {}
