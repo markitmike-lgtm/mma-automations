@@ -65,7 +65,7 @@ export async function partnerJoin(req, env, x) {
   const code = await uniqueCode(env, firstname, lastname, contact.id);
   await env.REPORTS.put(`partner:${code}`, String(contact.id));
   await env.REPORTS.put(`partnerof:${contact.id}`, code);
-  const link = `https://markitmike.com/partners/?ref=${code}`;
+  const link = `https://markitmike.com/?ref=${code}`; // the home page: clients land on the agency, and site.js keeps the ref
   const src = (f.src && f.src.utm && f.src.utm.utm_source) ? `${f.src.utm.utm_source}${f.src.utm.utm_medium ? ' / ' + f.src.utm.utm_medium : ''}` : (f.src && f.src.ref) || 'direct';
   const assoc = (t) => [{ to: { id: contact.id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: t }] }];
   const steps = [
