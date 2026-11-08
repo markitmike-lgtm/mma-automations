@@ -167,6 +167,9 @@ export async function kitRoute(req, env, x) {
 
   const body = `<header class="top"><div class="in"><img class="logo" src="${LOGO}" alt="Markit Mike Agency"><span class="eb">CROWN PARTNERS · YOUR SALES KIT</span><h1>Welcome to the team, ${esc(p.first || 'partner')}.</h1><p>Everything you need to introduce a client in two minutes. Bookmark this page. It's private to you, and everything here already has your name and link built in.</p></div></header>
 <main>
+<section class="sec"><span class="k">Before you start</span><h2>Your questions, answered</h2>
+<div class="qa"><b>Will your team try to take my client?</b>No. When you refer, the client is credited to you. When you resell, the work is done under your name, and our team never sells to your client directly. Better results make your mail look better, which helps you renew.</div>
+<div class="qa"><b>I'm not a digital person. Can I still do this?</b>Yes. Ask the three questions, share your link, and our team handles the conversation, the sale and the work. You'll get an update on every client you send.</div></section>
 <section class="sec"><span class="k">1 · Your link</span><h2>One link does the selling</h2><p class="lede">Text it, email it, or print the QR. It opens a page that says you recommended us, and every client who comes through it is credited to you for 90 days.</p>
 <div class="linkrow"><div style="display:grid;gap:10px;min-width:0"><div class="linkbox"><code id="lnk">${esc(link)}</code><button type="button" data-copylink>Copy link</button></div><div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn ghost" href="${esc(link)}" target="_blank" rel="noopener">Preview your page</a><a class="btn ghost" href="${kitLink(p.kit)}/flyer" target="_blank" rel="noopener">Print your flyer</a><a class="btn ghost" href="${kitLink(p.kit)}/card" target="_blank" rel="noopener">Print your desk card</a></div></div><div class="qr">${qrSvg(link)}</div></div></section>
 
@@ -182,11 +185,11 @@ export async function kitRoute(req, env, x) {
 <section class="sec"><span class="k">4 · Ready to send</span><h2>Copy, personalize, send</h2>
 ${copyBlock('text1', 'Text to a client')}${copyBlock('email1', 'Email introduction (copy michael@markitmike.com)')}${copyBlock('text2', 'Text the week their mailer drops')}</section>
 
-<section class="sec"><span class="k">5 · When they ask</span><h2>Easy answers to the four questions you'll hear</h2>
+<section class="sec"><span class="k">5 · When your clients ask</span><h2>Easy answers to what business owners say</h2><p class="lede">These are the questions your clients will ask you. Short, honest answers work best, and you can always hand off to our team.</p>
 <div class="qa"><b>"I don't have the budget."</b>Start small. The Brand Checkup is $197 and the Google Profile Glow Up is $297. One new customer usually covers it, and it makes every mailer work harder.</div>
-<div class="qa"><b>"Will you try to take my client?"</b>No. When you refer, the client is credited to you. When you resell, the work is done under your name, and our team never sells to your client directly. Better results make your mail look better, which helps you renew.</div>
-<div class="qa"><b>"I'm not a digital person."</b>You don't need to be. Ask the three questions, share your link, and our team handles the conversation, the sale and the work. You'll get an update on every client you send.</div>
-<div class="qa"><b>"What results will they get?"</b>We fix what customers see when they look a business up, and show a before and after. We don't promise specific numbers, and neither should you. That honesty is part of why clients trust it.</div></section>
+<div class="qa"><b>"I already have someone doing my marketing."</b>Great, this works alongside them. We fix the basics people see when they look you up, like your Google profile and reviews, so everything else they do works better.</div>
+<div class="qa"><b>"What results will I get?"</b>We fix what customers see when they look a business up, and show a before and after. We don't promise specific numbers, and neither should you. That honesty is part of why clients trust it.</div>
+<div class="qa"><b>"Why should I trust this?"</b>Because you know me, and I wouldn't send you somewhere I don't trust. Start with the free Snapshot. There's no cost and no pressure, and you'll see exactly what they'd fix.</div></section>
 
 <section class="sec"><span class="k">6 · Your earnings</span><h2>${total ? `${money(total)} earned so far` : 'Your first commission is one intro away'}</h2>
 ${earn.length ? `<div class="tw"><table><thead><tr><th>Date</th><th>What they bought</th><th>Commission</th><th>Paid by</th></tr></thead><tbody>${earn.map((c) => `<tr><td>${new Date(c.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' })}</td><td>${esc(c.what)}</td><td class="n">${money(c.amount)}</td><td>${new Date(c.due).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' })}</td></tr>`).join('')}</tbody></table></div>` : '<p class="lede">Refer it: 20% on Quick Wins and Gold Starter, 10% of each monthly plan payment. One client on our 90 day plan is about $750 to you. Commission is paid within 15 days of each client payment.</p>'}</section>
@@ -196,7 +199,7 @@ ${earn.length ? `<div class="tw"><table><thead><tr><th>Date</th><th>What they bo
 
 <section class="sec"><span class="k">8 · Your Welcome Box</span><h2>On its way once your agreement is signed</h2><p class="lede">Real mail, from one direct mail person to another. Here's what lands on your doorstep.</p>
 ${boxScene(p)}
-<div class="box"><div class="card">${icon('flyer')}<b>25 leave behind flyers</b><span>With your name and personal QR code.</span></div><div class="card">${icon('card')}<b>A desk card</b><span>The three questions and four answers, at a glance.</span></div><div class="card">${icon('qr')}<b>QR stickers</b><span>For your own mailers and proofs.</span></div><div class="card">${icon('note')}<b>A handwritten note</b><span>From Michael.</span></div><div class="card">${icon('pin')}<b>Founding Partner pin</b><span>For the first partners in.</span></div></div></section>
+<div class="box"><div class="card">${icon('flyer')}<b>25 leave behind flyers</b><span>With your name and personal QR code.</span></div><div class="card">${icon('card')}<b>A desk card</b><span>The three questions and your link, at a glance.</span></div><div class="card">${icon('qr')}<b>QR stickers</b><span>For your own mailers and proofs.</span></div><div class="card">${icon('note')}<b>A handwritten note</b><span>From Michael.</span></div><div class="card">${icon('pin')}<b>Founding Partner pin</b><span>For the first partners in.</span></div></div></section>
 
 <section class="sec"><span class="k">9 · Questions</span><h2>We're a text away</h2><p class="lede">Michael Hernandez · (714) 919-9469 · michael@markitmike.com</p></section>
 </main>
