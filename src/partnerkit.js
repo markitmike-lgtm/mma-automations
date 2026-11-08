@@ -96,18 +96,19 @@ form.profile input[type=text]{font:16px Inter,Arial;padding:11px 12px;border-rad
 .ph .none{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;background:var(--soft);border:2px dashed var(--line);color:var(--muted);font:700 12px Inter}
 .chk{grid-column:1/-1;display:flex;gap:10px;align-items:flex-start;font:500 14px Inter!important}.chk input{width:20px;height:20px;accent-color:var(--purple)}
 #st{font:700 14px Inter;color:var(--teal)}
-.box{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.box .card{text-align:center;justify-items:center}
+.box{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.box .card{text-align:center;justify-items:center}
 .box svg.i{width:46px;height:46px;fill:none;stroke:var(--purple);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 @media(max-width:760px){.grid2,.grid3,.box,form.profile{grid-template-columns:1fr}.linkrow{grid-template-columns:1fr}}
 `;
 function page(title, body, extra = '') {
-  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>${esc(title)}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Montserrat:wght@800;900&family=Caveat:wght@600&display=swap"><style>${CSS}${extra}</style></head><body>${body}</body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>${esc(title)}</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Montserrat:wght@800;900&family=Caveat:wght@600&family=Playfair+Display:ital,wght@1,600&display=swap"><style>${CSS}${extra}</style></head><body>${body}</body></html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'X-Robots-Tag': 'noindex', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
 }
 
 const ICON = {
   flyer: '<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h5"/>',
   card: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h6M7 14h10"/>',
   note: '<path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M14 7l3 3"/>',
+  pin: '<circle cx="12" cy="12" r="9"/><path d="M7 15l-.6-6 3 2.4L12 7l2.6 4.4 3-2.4-.6 6z"/>',
   qr: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v7M14 20h3"/>',
 };
 const icon = (k) => `<svg class="i" viewBox="0 0 24 24">${ICON[k]}</svg>`;
@@ -193,8 +194,9 @@ ${earn.length ? `<div class="tw"><table><thead><tr><th>Date</th><th>What they bo
 <section class="sec"><span class="k">7 · Resell it</span><h2>Sell it under your own name</h2><p class="lede">Buy at partner pricing, set your own price, and our team does the work behind you. To order, email michael@markitmike.com with the client's business name, what they bought and their Google or website login. We'll send a partner invoice, and work starts once it's paid.</p>
 <div class="tw"><table><thead><tr><th>Service</th><th>Your cost</th><th>Suggested price</th><th>Delivery</th></tr></thead><tbody><tr><td>Brand Checkup</td><td class="n">$129</td><td>$197</td><td>3 business days</td></tr><tr><td>Google Profile Glow Up</td><td class="n">$199</td><td>$297</td><td>5 business days</td></tr><tr><td>Mail Ready Page</td><td class="n">$199</td><td>$297</td><td>5 business days</td></tr></tbody></table></div></section>
 
-<section class="sec"><span class="k">8 · Your Welcome Box</span><h2>On its way once your agreement is signed</h2><p class="lede">Real mail, from one direct mail person to another. Here's what's inside.</p>
-<div class="box"><div class="card">${icon('flyer')}<b>25 leave behind flyers</b><span>With your name and personal QR code.</span></div><div class="card">${icon('card')}<b>A desk card</b><span>The three questions and four answers, at a glance.</span></div><div class="card">${icon('qr')}<b>QR stickers</b><span>For your own mailers and proofs.</span></div><div class="card">${icon('note')}<b>A handwritten note</b><span>From Michael.</span></div></div></section>
+<section class="sec"><span class="k">8 · Your Welcome Box</span><h2>On its way once your agreement is signed</h2><p class="lede">Real mail, from one direct mail person to another. Here's what lands on your doorstep.</p>
+${boxScene(p)}
+<div class="box"><div class="card">${icon('flyer')}<b>25 leave behind flyers</b><span>With your name and personal QR code.</span></div><div class="card">${icon('card')}<b>A desk card</b><span>The three questions and four answers, at a glance.</span></div><div class="card">${icon('qr')}<b>QR stickers</b><span>For your own mailers and proofs.</span></div><div class="card">${icon('note')}<b>A handwritten note</b><span>From Michael.</span></div><div class="card">${icon('pin')}<b>Founding Partner pin</b><span>For the first partners in.</span></div></div></section>
 
 <section class="sec"><span class="k">9 · Questions</span><h2>We're a text away</h2><p class="lede">Michael Hernandez · (714) 919-9469 · michael@markitmike.com</p></section>
 </main>
@@ -215,6 +217,49 @@ var rm=document.getElementById('prm');if(rm)rm.onclick=function(){save({removePh
 })();
 </script>`;
   return page(`Crown Partners Kit: ${name}`, body);
+}
+
+
+/* ---------- the Welcome Box, drawn as a flat lay with the real logo and crown ---------- */
+function boxScene(p) {
+  const first = esc(p.first || 'partner');
+  return `<style>
+.wb{container-type:inline-size;position:relative;width:100%;aspect-ratio:16/10;border-radius:18px;overflow:hidden;background:radial-gradient(70% 80% at 30% 20%,#FFF8EC 0%,#F4E9DA 55%,#E9DCC8 100%)}
+.wb *{position:absolute}
+.wb .shadow{filter:drop-shadow(0 1.4cqw 1.6cqw rgba(43,15,99,.28))}
+.wb .lid{left:6%;top:6%;width:44%;height:34%;border-radius:1.4cqw;background:linear-gradient(140deg,#5D0EA6,#2B0F63 70%,#1A0838);transform:rotate(-7deg);overflow:hidden}
+.wb .lid .band{left:0;right:0;top:58%;height:12%;background:linear-gradient(90deg,#FFE08A,#E79A27 50%,#C06F14)}
+.wb .lid img.cr{left:50%;top:7%;width:15%;transform:translateX(-50%)}
+.wb .lid .t{left:0;right:0;top:41%;text-align:center;font:900 2.3cqw Montserrat,Arial;letter-spacing:.32em;color:#FFD27A}
+.wb .lid img.lg{left:50%;bottom:9%;height:9%;transform:translateX(-50%)}
+.wb .base{left:30%;top:36%;width:46%;height:46%;border-radius:1.2cqw;background:linear-gradient(160deg,#4A0B86,#2B0F63);transform:rotate(3deg)}
+.wb .tissue{left:33%;top:38.5%;width:40%;height:40%;border-radius:.8cqw;background:repeating-linear-gradient(115deg,#F7D58B 0 2.2cqw,#EDBE61 2.2cqw 4.4cqw);transform:rotate(3deg)}
+.wb .flyer{left:36%;top:26%;width:20%;height:30%;background:#fff;border-radius:.4cqw;transform:rotate(-11deg);overflow:hidden}
+.wb .flyer .hd{left:0;right:0;top:0;height:42%;background:linear-gradient(140deg,#5D0EA6,#2B0F63)}
+.wb .flyer .hd i{left:8%;right:10%;font:900 1.25cqw/1.1 Montserrat,Arial;color:#fff;font-style:normal;top:22%}
+.wb .flyer .gb{left:0;right:0;top:42%;height:4%;background:#E79A27}
+.wb .flyer .row{left:8%;height:3.5%;border-radius:1cqw;background:#E6DDF2}
+.wb .flyer .q{right:8%;bottom:7%;width:22%;aspect-ratio:1;background:repeating-conic-gradient(#1c1236 0 25%,#fff 0 50%) 0 0/28% 28%;border:.25cqw solid #E79A27}
+.wb .card{left:58%;top:30%;width:22%;height:15%;background:#fff;border-radius:.5cqw;transform:rotate(8deg);padding:1.2cqw}
+.wb .card b{position:static;display:block;font:800 .95cqw Montserrat,Arial;letter-spacing:.2em;color:#5D0EA6}
+.wb .card .l{position:static;display:block;height:.7cqw;margin-top:.8cqw;border-radius:1cqw;background:#E6DDF2}
+.wb .note{left:62%;top:54%;width:26%;height:24%;background:#FFFDF6;border-radius:.4cqw;transform:rotate(-5deg);padding:1.6cqw}
+.wb .note span{position:static;display:block;font:600 2.3cqw/1.15 Caveat,'Bradley Hand',cursive;color:#0B3354}
+.wb .stk{width:9%;aspect-ratio:1;border-radius:50%;background:#fff;border:.5cqw solid #E79A27;display:grid;place-items:center}
+.wb .stk i{position:static;width:60%;aspect-ratio:1;background:repeating-conic-gradient(#1c1236 0 25%,#fff 0 50%) 0 0/33% 33%}
+.wb .pin{left:14%;top:60%;width:11%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 30%,#7B2BD0,#3A0A75);border:.6cqw solid #E79A27;display:grid;place-items:center}
+.wb .pin img{position:static;width:62%}
+.wb .tag{left:12%;top:74%;font:800 1.1cqw Montserrat,Arial;letter-spacing:.18em;color:#9A5B00}
+</style>
+<div class="wb" role="img" aria-label="The Crown Partners Welcome Box: a purple box with gold tissue, flyers with your QR code, a desk card, QR stickers, a handwritten note and a Founding Partner pin">
+ <div class="lid shadow"><img class="cr" src="${CROWN}" alt=""><div class="t">CROWN PARTNERS</div><div class="band"></div><img class="lg" src="${LOGO}" alt=""></div>
+ <div class="base shadow"></div><div class="tissue"></div>
+ <div class="flyer shadow"><div class="hd"><i>Your customers Google you before they call.</i></div><div class="gb"></div><div class="row" style="top:54%;width:62%"></div><div class="row" style="top:62%;width:48%"></div><div class="row" style="top:70%;width:55%"></div><div class="q"></div></div>
+ <div class="card shadow"><b>ASK</b><span class="l" style="width:90%"></span><span class="l" style="width:75%"></span><span class="l" style="width:82%"></span></div>
+ <div class="note shadow"><span>Welcome to the team, ${first}!</span><span style="margin-top:1cqw;font-size:2cqw">Michael</span></div>
+ <div class="stk shadow" style="left:47%;top:80%"><i></i></div><div class="stk shadow" style="left:56%;top:84%;transform:rotate(12deg)"><i></i></div>
+ <div class="pin shadow"><img src="${CROWN}" alt=""></div><div class="tag">FOUNDING PARTNER</div>
+</div>`;
 }
 
 /* ---------- print pieces ---------- */
