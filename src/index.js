@@ -14,6 +14,7 @@ import { fittingRoute, answersToMarkdown } from './fitting.js';
 import { snapshotReview, snapshotClient } from './snapshot.js';
 import { partnerJoin, creditPartner, partnerCommission } from './partners.js';
 import { hiRoute } from './links.js';
+import { pcardRoute, pimgRoute, kitRoute as partnerKitRoute } from './partnerkit.js';
 import { fixRoute, artRoute } from './fixes.js';
 import { queueBrief, siteFor } from './research.js';
 import { bookRoute } from './schedule.js';
@@ -42,6 +43,9 @@ export default {
       if ((req.method === 'GET' || req.method === 'POST') && url.pathname.startsWith('/u/')) return await unsubscribeRoute(url, env, X(), req.method);
       if (req.method === 'POST' && url.pathname === '/seen') return await seenRoute(req, env, X());
       if (req.method === 'POST' && url.pathname === '/hi') return await hiRoute(req, env, X());
+      if (req.method === 'GET' && url.pathname === '/pcard') return await pcardRoute(url, env);
+      if (req.method === 'GET' && url.pathname.startsWith('/pimg/')) return await pimgRoute(url, env);
+      if ((req.method === 'GET' || req.method === 'POST') && url.pathname.startsWith('/pk/')) return await partnerKitRoute(req, env, X());
       if (req.method === 'GET' && url.pathname === '/sequence') return json(await sequenceSummary(env));
       if (url.pathname.startsWith('/fitting/')) return await fittingRoute(req, env, X(), ctx);
       if (url.pathname.startsWith('/snapshot/')) return await snapshotReview(req, env, X());
