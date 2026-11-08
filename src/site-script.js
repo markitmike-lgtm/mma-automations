@@ -52,6 +52,13 @@ window.mmaSource = function(){ var v = getSrc() || {}; return { utm: v.utm || {}
   window.mmaTrack('outreach_click', { page_path: location.pathname });
 })();
 
+// a personal link from Michael (?hi=<name>): tell the worker so he knows they opened it
+(function(){ var h = new URLSearchParams(location.search).get('hi'); if (!h || ME) return;
+  var body = JSON.stringify({ h: h, page: location.pathname });
+  try { navigator.sendBeacon ? navigator.sendBeacon(API + '/hi', new Blob([body], { type: 'text/plain' })) : fetch(API + '/hi', { method: 'POST', body: body, keepalive: true }); } catch (x) {}
+  window.mmaTrack('personal_link_open', { page_path: location.pathname });
+})();
+
 // Crown Blog signups: let Jetpack do its job, and send a copy to HubSpot
 document.addEventListener('submit', function(e){
   var f = e.target; if (!f || !f.closest || !f.closest('.wp-block-jetpack-subscriptions, .jetpack_subscription_widget')) return;
