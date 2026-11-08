@@ -12,7 +12,7 @@ import { reportRoute } from './report.js';
 import { unsubscribeRoute, seenRoute, sequenceSummary } from './sequence.js';
 import { fittingRoute, answersToMarkdown } from './fitting.js';
 import { snapshotReview, snapshotClient } from './snapshot.js';
-import { partnerJoin } from './partners.js';
+import { partnerJoin, creditPartner, partnerCommission } from './partners.js';
 import { fixRoute, artRoute } from './fixes.js';
 import { queueBrief, siteFor } from './research.js';
 import { bookRoute } from './schedule.js';
@@ -157,6 +157,8 @@ async function stripe(req, env) {
   const company = s.custom_fields?.find((f) => /business|company/i.test(f.key))?.text?.value
     || (deal ? await companyName(env, deal, contact) : '') || contact?.properties?.company || s.customer_details?.name || 'New client';
 
+  // Crown Partners: a credited client's payment earns their partner a commission (repeat buys and upgrades too)
+  if (env.REPORTS) await partnerCommission(env, X(), { sessionId: s.id, contact, amountCents: s.amount_total, plan, productNames });
   if (deal && deal.properties.dealstage === env.STAGE_WON) return json({ skipped: 'already Client Won' });
   if (plan) {
     const lists = await clickupClient(env, company, plan);
@@ -401,6 +403,7 @@ async function lead(req, env) {
     associations: assoc(204, 216),
   }));
   if (optIn) tasks.push(recordOptIn(env, contact.id, email, 'Contact form'));
+  tasks.push(creditPartner(env, X(), contact.id, f.src));
   tasks.push(sendAndLog(env, { to: email, contact, deal, ...leadReplyEmail({ firstName: firstname }) }));
   // research the business first; the one alert goes out with the Pre-Call Brief inside (a few minutes)
   const website = siteFor({ email, website: siteUrl });
@@ -497,6 +500,7 @@ async function subscribe(req, env) {
   let contact = await contactByEmail(env, email);
   if (!contact) contact = await hs(env, 'POST', '/crm/v3/objects/contacts', { properties: { email, lifecyclestage: 'subscriber' } });
   await recordOptIn(env, contact.id, email, source);
+  await creditPartner(env, X(), contact.id, b.src);
   await hs(env, 'POST', '/crm/v3/objects/notes', {
     properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>${source.replace(/[&<>]/g, '')}</b></p><p>Source: ${srcText(b.src).replace(/[&<>]/g, '')}</p>` },
     associations: [{ to: { id: contact.id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }],

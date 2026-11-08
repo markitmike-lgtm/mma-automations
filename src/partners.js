@@ -78,3 +78,63 @@ export async function partnerJoin(req, env, x) {
   (await Promise.allSettled(steps)).forEach((r) => r.status === 'rejected' && console.error('partner step failed', r.reason && r.reason.message));
   return out({ ok: true, link });
 }
+
+// ---------- referral credit and commissions ----------
+const CREDIT_DAYS = 90;
+const TERM = { platinum: 3, crownjewel: 6 }; // monthly plans: commission on each payment of the first term
+
+// called by every website form: a visitor who arrived on a partner link (?ref=<code>) is credited to that partner
+export async function creditPartner(env, x, contactId, src) {
+  try {
+    const code = String(src?.utm?.ref || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 40);
+    if (!code || !contactId) return;
+    const partnerId = await env.REPORTS.get(`partner:${code}`);
+    if (!partnerId || partnerId === String(contactId)) return; // unknown code, or a partner referring themselves
+    const prev = await env.REPORTS.get(`pclient:${contactId}`, 'json');
+    if (prev && Date.now() - prev.at < CREDIT_DAYS * 864e5) return; // first introduction wins
+    await env.REPORTS.put(`pclient:${contactId}`, JSON.stringify({ code, partnerId, at: Date.now() }));
+    await x.hs(env, 'POST', '/crm/v3/objects/notes', { properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Crown Partner referral:</b> credited to partner code <b>${esc(code)}</b> for ${CREDIT_DAYS} days (until ${new Date(Date.now() + CREDIT_DAYS * 864e5).toLocaleDateString('en-US', { timeZone: 'America/Los_Angeles' })}). A purchase in that window earns the partner a commission.</p>` }, associations: [{ to: { id: String(contactId) }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 202 }] }] });
+  } catch (e) { console.error('credit partner', e.message); }
+}
+
+// called by the Stripe webhook for every paid checkout; never throws
+export async function partnerCommission(env, x, { sessionId, contact, amountCents, plan, productNames }) {
+  try {
+    if (!contact?.id || !amountCents) return;
+    if (await env.REPORTS.get(`commission:${sessionId}`)) return; // Stripe retries
+    const credit = await env.REPORTS.get(`pclient:${contact.id}`, 'json');
+    if (!credit) return;
+    // the purchase must start inside the credit window; later payments of the same first plan term still count
+    if (Date.now() - credit.at > CREDIT_DAYS * 864e5 && !credit.locked) return;
+    credit.locked = true;
+    await env.REPORTS.put(`pclient:${contact.id}`, JSON.stringify(credit));
+    const months = plan && TERM[plan.key];
+    const rate = months ? 0.1 : 0.2;
+    const amount = Math.round(amountCents * rate) / 100;
+    const due = new Date(Date.now() + 15 * 864e5);
+    const dueText = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' });
+    const partner = await x.hs(env, 'GET', `/crm/v3/objects/contacts/${credit.partnerId}?properties=firstname,lastname,email`).catch(() => null);
+    const pname = [partner?.properties?.firstname, partner?.properties?.lastname].filter(Boolean).join(' ') || credit.code;
+    const client = [contact.properties?.firstname, contact.properties?.lastname].filter(Boolean).join(' ') || contact.properties?.email || 'client';
+    const what = (productNames || []).filter(Boolean).join(', ') || plan?.name || 'purchase';
+    const money = (n) => `$${n.toFixed(2).replace(/\.00$/, '')}`;
+    const later = months ? ` Then ${money(amount)} after each of the next ${months - 1} monthly payments, if they come in (reminders below).` : '';
+    const rec = { sessionId, partnerId: credit.partnerId, code: credit.code, clientId: contact.id, amount, rate, what, at: Date.now(), due: due.toISOString(), paid: false };
+    await env.REPORTS.put(`commission:${sessionId}`, JSON.stringify(rec));
+    const list = (await env.REPORTS.get('commissions', 'json')) || [];
+    list.push(sessionId); await env.REPORTS.put('commissions', JSON.stringify(list.slice(-500)));
+
+    const assocP = (t) => [{ to: { id: String(credit.partnerId) }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: t }] }];
+    const steps = [
+      x.hs(env, 'POST', '/crm/v3/objects/notes', { properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Commission earned:</b> ${money(amount)} (${rate * 100}% of ${money(amountCents / 100)}) for referring ${esc(client)}, who bought ${esc(what)}. Pay by ${dueText}.${esc(later)}</p>` }, associations: assocP(202) }),
+      x.hs(env, 'POST', '/crm/v3/objects/tasks', { properties: { hs_timestamp: due.toISOString(), hs_task_subject: `Pay Crown Partner ${pname}: ${money(amount)}`, hs_task_body: `<p>Commission for ${esc(client)} (${esc(what)}). Pay by direct deposit or Zelle and send a one line statement: client, amount paid, commission. Make sure their W-9 is on file first.</p>`, hs_task_status: 'NOT_STARTED', hs_task_priority: 'HIGH', hs_task_type: 'TODO' }, associations: assocP(204) }),
+      x.sendRaw(env, { to: env.OWNER_EMAIL, subject: `Crown Partner commission: pay ${pname} ${money(amount)} by ${dueText}`, html: `<div style="font-family:Arial,Helvetica,sans-serif;color:#1B1030;max-width:600px;"><p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:2px;color:#9A5B00;">COMMISSION EARNED</p><p style="margin:0 0 12px;font-size:20px;font-weight:800;">${esc(pname)} earned ${money(amount)}</p><p style="font-size:15px;">${esc(client)} bought ${esc(what)} for ${money(amountCents / 100)}. That's ${rate * 100}% to ${esc(pname)}, due by <b>${dueText}</b>.${esc(later)}</p><p style="font-size:15px;">A HubSpot task is waiting on ${esc(pname)}'s record. Check their W-9 is on file before you pay.</p></div>` }),
+    ];
+    // monthly plans: a reminder for each later payment in the first term
+    if (months) for (let m = 1; m < months; m++) {
+      const d = new Date(Date.now() + (m * 30 + 15) * 864e5);
+      steps.push(x.hs(env, 'POST', '/crm/v3/objects/tasks', { properties: { hs_timestamp: d.toISOString(), hs_task_subject: `Crown Partner ${pname}: commission for payment ${m + 1} of ${months} (${money(amount)})`, hs_task_body: `<p>Only if ${esc(client)}'s payment ${m + 1} of ${months} came in. Pay ${money(amount)} (10% of that payment) to ${esc(pname)}. If the plan was cancelled, close this task.</p>`, hs_task_status: 'NOT_STARTED', hs_task_priority: 'MEDIUM', hs_task_type: 'TODO' }, associations: assocP(204) }));
+    }
+    (await Promise.allSettled(steps)).forEach((r) => r.status === 'rejected' && console.error('commission step failed', r.reason && r.reason.message));
+  } catch (e) { console.error('partner commission', e.message); }
+}
