@@ -288,10 +288,10 @@ function flyerPage(p, link) {
  <div style="padding:.45in .6in 0;display:grid;grid-template-columns:repeat(3,1fr);gap:.22in">
   ${[['Google Profile Glow Up', 'Hours, photos, description and review replies, so you win the search.', '$297'], ['Mail Ready Page', 'A page and QR code made for your mailer offer, so every card turns into calls you can count.', '$297'], ['Brand Checkup', 'A recorded walkthrough of your website, Google, reviews and social, with what to fix first.', '$197']].map(([h, d, pr]) => `<div style="background:#F7F4FB;border-radius:.16in;padding:.2in;display:grid;gap:.06in"><div style="font:900 13pt/1.15 Montserrat;color:#1c1236">${h}</div><div style="font:10.5pt/1.45 Inter;color:#3b3550">${d}</div><div style="font:900 15pt Montserrat;color:#5D0EA6">${pr}</div></div>`).join('')}
  </div>
- <div style="padding:.3in .6in 0;font:11pt/1.5 Inter;color:#3b3550">Want the bigger picture? Start with a <b>free 30 minute Crown Fitting</b>. Our team looks at how customers find you, and maps what to fix first, from quick wins to a full 90 day plan.</div>
+ <div style="padding:.3in .6in 0;font:11pt/1.5 Inter;color:#3b3550">Want the bigger picture? Start with a <b>free Crown Fitting discovery call</b>. Our team looks at how customers find you, and maps what to fix first, from quick wins to a full 90 day plan.</div>
  <div style="position:absolute;left:.6in;right:.6in;bottom:.55in;display:flex;gap:.35in;align-items:center;border-top:2px solid #E6DDF2;padding-top:.3in">
   <div style="width:1.55in;height:1.55in;padding:.08in;border:3px solid #E79A27;border-radius:.14in;flex:none">${qrSvg(link)}</div>
-  <div style="display:grid;gap:.08in;flex:1"><div style="font:900 16pt Montserrat;color:#1c1236">Scan to book your free Crown Fitting</div><div style="font:10pt Inter;color:#6e6788">or visit ${esc(link.replace('https://', ''))}</div><div style="display:flex;gap:.14in;align-items:center;margin-top:.06in">${partnerBadge(p)}</div></div>
+  <div style="display:grid;gap:.08in;flex:1"><div style="font:900 16pt Montserrat;color:#1c1236">Scan to book a Crown Fitting Discovery Call</div><div style="font:10pt Inter;color:#6e6788">or visit ${esc(link.replace('https://', ''))}</div><div style="display:flex;gap:.14in;align-items:center;margin-top:.06in">${partnerBadge(p)}</div></div>
  </div>
 </div>`;
   return page(`Flyer: ${displayName(p)}`, body, PRINT);

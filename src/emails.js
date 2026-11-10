@@ -111,8 +111,8 @@ export function leadReplyEmail({ firstName }) {
       body:
         p(`Hi ${esc(firstName) || 'there'},`) +
         p('Thank you for reaching out to Markit Mike Agency. Your message is in, and our team reads every word. You will hear back from us within 24 to 48 hours.') +
-        p('Want to skip the back and forth? Grab a time for a free Crown Fitting. It is a relaxed 30 minute conversation about your brand, your goals and what is standing in the way.') +
-        button('https://markitmike.com/crownfitting', 'Book my Crown Fitting') +
+        p('Want to skip the back and forth? Grab a time for a free Crown Fitting discovery call. It is a relaxed 30 minute conversation about your brand, your goals and what is standing in the way.') +
+        button('https://markitmike.com/crownfitting', 'Book a Crown Fitting Discovery Call') +
         label('While you wait') +
         steps([
           ['See the work.', 'Real brands, real results: <a href="https://markitmike.com/portfolio/" style="color:#108193;font-weight:700;">View our work</a>.'],
@@ -273,7 +273,7 @@ export function leadNudgeEmail({ firstName, second }) {
         (second
           ? p("One last note so you don't miss it. If growing your brand is still on your list, a free Crown Fitting is the easiest place to start. If the timing isn't right, no worries at all, just reply and let us know.")
           : p('Thanks again for reaching out. The fastest way to get real answers is a free Crown Fitting: a relaxed 30 minute conversation about your brand, your goals and what is standing in the way. You will leave with a few ideas you can use right away, whether or not we work together.')) +
-        button('https://markitmike.com/crownfitting', 'Book my Crown Fitting') +
+        button('https://markitmike.com/crownfitting', 'Book a Crown Fitting Discovery Call') +
         p('Prefer email? Just reply to this one and our team will pick it up.') +
         p('Talk soon,'),
     }),
@@ -350,6 +350,33 @@ export function snapshotEmail({ firstName, company, link, booking }) {
         p('In your plan walkthrough, we will reveal the full Snapshot: your Crown scorecard, everything else we found, and the 90 day plan we recommend.') +
         times +
         p('With gratitude,'),
+    }),
+  };
+}
+
+// Crown Partners welcome, sent by partnerJoin. Points the new partner to the Sales Kit first,
+// where the share link lives with its context, instead of handing over the bare share link.
+export function partnerWelcomeEmail({ firstName, kit }) {
+  return {
+    subject: `Welcome to Crown Partners, ${firstName || 'partner'}`,
+    html: shell({
+      header: 'mma-email-hdr-partner-v2.jpg',
+      headerAlt: 'Crown Partners by Markit Mike Agency. Welcome to the court.',
+      preheader: 'Your private Sales Kit is ready. Start there.',
+      body:
+        p(`Hi ${esc(firstName) || 'there'},`) +
+        p('Thank you for joining Crown Partners by Markit Mike Agency. We are glad to have you on the team.') +
+        p('Your private Sales Kit is your home base. It walks you through how the program works, then gives you everything you need to share: your personal link and QR code with how and when to use them, a printable flyer, ready to send texts and emails, and your earnings as they grow.') +
+        button(kit, 'Open my Sales Kit') +
+        card('<strong>Start in your Sales Kit</strong><br>Your personal share link is inside, along with the context for using it. Bookmark the kit. It is private to you.') +
+        label('How you earn') +
+        steps([
+          ['Refer it.', 'Earn 20% on Quick Wins and Gold Starter, and 10% of each monthly payment on our plans, paid within 15 days of each client payment clearing.'],
+          ['Resell it.', 'Want to sell a Google Profile Glow Up, Brand Checkup or Mail Ready Page under your own name? Reply to this email and we will set you up with partner pricing.'],
+          ['Introduce by email.', 'Prefer a warm intro? Email the client and copy michael@markitmike.com. That counts too.'],
+        ]) +
+        p('Our team will reach out within one business day to welcome you and answer any questions.') +
+        p('Talk soon,'),
     }),
   };
 }

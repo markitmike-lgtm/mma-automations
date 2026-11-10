@@ -1,14 +1,14 @@
 // Crown Partners: people who sell local marketing (former Money Mailer franchisees first) refer clients
 // or resell Quick Wins. POST /partner from markitmike.com/partners:
 //   creates or updates the HubSpot contact, gives them a personal link (markitmike.com/partners?ref=<code>),
-//   logs a note, makes a call task, emails them their link and alerts the owner.
+//   logs a note, makes a call task, emails them their private Sales Kit (the share link lives there with its context) and alerts the owner.
 // Referral credit: site.js keeps ?ref=<code> with the visitor's first touch, so any later form shows "partner ref=<code>".
 
 import { upsertPartner, shareLink, kitLink } from './partnerkit.js';
+import { partnerWelcomeEmail } from './emails.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const SITE_ORIGIN = /^https:\/\/(www\.)?markitmike\.com$/;
-const IMG = 'https://markitmike.com/wp-content/uploads/2026/11/';
 
 async function uniqueCode(env, first, last, contactId) {
   const mine = await env.REPORTS.get(`partnerof:${contactId}`);
@@ -20,30 +20,6 @@ async function uniqueCode(env, first, last, contactId) {
     if (!taken || taken === String(contactId)) return code;
   }
   return `${base}${Date.now().toString(36).slice(-4)}`;
-}
-
-function welcomeHtml({ first, link, kit }) {
-  const p = (t) => `<p style="margin:0 0 16px 0;">${t}</p>`;
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Welcome to Crown Partners</title></head>
-<body style="margin:0;padding:0;background:#F4F1F8;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F1F8;"><tr><td align="center" style="padding:28px 12px;">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;">
-<tr><td style="background:#0B3354;background-image:linear-gradient(150deg,#036684 0%,#0B3354 50%,#1D0A40 100%);padding:30px 36px;border-bottom:4px solid #E79A27;">
-<img src="${IMG}mma-logo-reverse-tight.png" width="170" alt="Markit Mike Agency" style="display:block;width:170px;height:auto;border:0;">
-<p style="margin:18px 0 0;font-family:Montserrat,Arial,sans-serif;font-size:12px;font-weight:800;letter-spacing:3px;color:#FFD27A;">CROWN PARTNERS</p>
-<p style="margin:6px 0 0;font-family:Montserrat,Arial,sans-serif;font-size:28px;line-height:32px;font-weight:900;color:#FFFFFF;">You're in, ${esc(first) || 'partner'}.</p></td></tr>
-<tr><td style="padding:30px 36px 10px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:26px;color:#1B1030;">
-${p('Thank you for joining Crown Partners. Your personal Sales Kit is ready: your share link, a printable flyer with your QR code, ready to send texts and emails, and your earnings, all in one place.')}
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;"><tr><td style="border-radius:999px;background:#E79A27;background-image:linear-gradient(135deg,#FFE08A,#E79A27 55%,#C06F14);"><a href="${kit}" style="display:inline-block;padding:15px 30px;font-family:Montserrat,Arial,sans-serif;font-size:16px;font-weight:900;color:#2A0E52;text-decoration:none;border-radius:999px;">Open my Sales Kit</a></td></tr></table>
-${p('Bookmark it. It is private to you.')}
-${p('Here is your personal partner link. Share it with any client who needs help with their Google profile, website, reviews or a plan to grow, and every client who comes through it is credited to you.')}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 22px;background:#F6F2FB;border-radius:12px;border-left:4px solid #E79A27;"><tr><td style="padding:16px 18px;font-family:Arial,Helvetica,sans-serif;font-size:16px;"><b>Your link</b><br><a href="${link}" style="color:#108193;font-weight:700;word-break:break-all;">${link}</a></td></tr></table>
-${p('<b>Refer it:</b> earn 20% on Quick Wins and Gold Starter, and 10% of each monthly payment on our plans. Commission is paid within 15 days of each client payment clearing.')}
-${p('<b>Resell it:</b> want to sell a Google Profile Glow Up, Brand Checkup or Mail Ready Page under your own name? Reply to this email and we will set you up with partner pricing.')}
-${p('Prefer a warm intro? Just email the client and copy michael@markitmike.com. That counts too.')}
-${p('Talk soon,<br>Michael<br>Markit Mike Agency<br>(714) 919&#8209;9469')}
-</td></tr>
-<tr><td style="background:#1D0A40;padding:16px 36px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#BFB3D6;">Markit Mike Agency · 161 Reed Ln, La Habra, CA 90631</td></tr>
-</table></td></tr></table></body></html>`;
 }
 
 export async function partnerJoin(req, env, x) {
@@ -78,7 +54,7 @@ export async function partnerJoin(req, env, x) {
   const steps = [
     x.hs(env, 'POST', '/crm/v3/objects/notes', { properties: { hs_timestamp: new Date().toISOString(), hs_note_body: `<p><b>Joined Crown Partners</b></p><p>Partner code: <b>${esc(code)}</b><br>Partner link: <a href="${link}">${link}</a><br>Sales Kit (private): <a href="${kit}">${kit}</a><br>Sells: ${esc(sells || 'not given')}<br>Came from: ${esc(src)}</p><p>Leads with "partner ref=${esc(code)}" in their source are credited to this partner.</p>` }, associations: assoc(202) }),
     x.hs(env, 'POST', '/crm/v3/objects/tasks', { properties: { hs_timestamp: new Date(Date.now() + 24 * 3600e3).toISOString(), hs_task_subject: `Call new Crown Partner: ${name}`, hs_task_body: `<p>Welcome them, ask which clients come to mind first, and offer partner pricing if they want to resell.</p><p>Phone: ${esc(phone || 'not given')}<br>Link: <a href="${link}">${link}</a></p>`, hs_task_status: 'NOT_STARTED', hs_task_priority: 'HIGH', hs_task_type: 'CALL' }, associations: assoc(204) }),
-    x.sendAndLog(env, { to: email, contact, subject: `Welcome to Crown Partners, ${firstname}`, html: welcomeHtml({ first: firstname, link, kit }) }),
+    x.sendAndLog(env, { to: email, contact, ...partnerWelcomeEmail({ firstName: firstname, kit }) }),
     x.sendRaw(env, { to: env.OWNER_EMAIL, reply_to: email, subject: `New Crown Partner: ${name}${company ? ` (${company})` : ''}`, html: `<div style="font-family:Arial,Helvetica,sans-serif;color:#1B1030;max-width:600px;"><p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:2px;color:#5D0EA6;">NEW CROWN PARTNER</p><p style="margin:0 0 12px;font-size:20px;font-weight:800;">${esc(name)}${company ? ` · ${esc(company)}` : ''}</p><p style="font-size:15px;">Email: ${esc(email)}<br>Phone: ${esc(phone || 'not given')}<br>Sells: ${esc(sells || 'not given')}<br>Came from: ${esc(src)}<br>Partner link: ${link}<br>Their Sales Kit: <a href="${kit}">${kit}</a></p><p><a href="https://app-na2.hubspot.com/contacts/246716405/record/0-1/${contact.id}" style="display:inline-block;padding:11px 18px;border-radius:8px;background:#5D0EA6;color:#fff;font-weight:700;text-decoration:none;">Open in HubSpot</a></p></div>` }),
   ];
   if (f.optIn === true && x.recordOptIn) steps.push(x.recordOptIn(env, contact.id, email, 'Crown Partners signup'));
