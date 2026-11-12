@@ -14,7 +14,12 @@ const ADDRESS = 'Markit Mike Agency, 161 Reed Ln, La Habra, CA 90631';
 const DAILY_CAP = 12;
 const PER_RUN = 2;
 const GAPS = [0, 3, 5]; // business days to wait before step 1, 2, 3
-const SEND_HOURS_UTC = [14, 19]; // 9am to 2pm Eastern, 6am to 11am Pacific
+// send window in the PROSPECT's local time: weekdays 9am to noon. Unknown location falls back to
+// Pacific, so nobody anywhere in the US gets one before 9am.
+const SEND_HOURS_LOCAL = [9, 12];
+const DEFAULT_TZ = 'America/Los_Angeles';
+// a /seen hit this soon after the email went out is an email security scanner, not a person
+const SCANNER_GRACE_MS = 3 * 60e3;
 const STATE_KEY = 'seq:state';
 const HS_CONTACT = (id) => `https://app-na2.hubspot.com/contacts/246716405/record/0-1/${id}`;
 
@@ -32,9 +37,38 @@ export function addBusinessDays(from, n) {
   return d.getTime();
 }
 
-export function inWindow(d = new Date()) {
-  const w = d.getUTCDay(), h = d.getUTCHours();
-  return w >= 1 && w <= 5 && h >= SEND_HOURS_UTC[0] && h < SEND_HOURS_UTC[1];
+const TZ_BY_STATE = (() => {
+  const zones = {
+    'America/New_York': 'CT DE DC FL GA ME MD MA MI NH NJ NY NC OH PA RI SC VT VA WV IN KY',
+    'America/Chicago': 'AL AR IL IA KS LA MN MS MO NE ND OK SD TN TX WI',
+    'America/Denver': 'CO ID MT NM UT WY',
+    'America/Phoenix': 'AZ',
+    'America/Los_Angeles': 'CA NV OR WA',
+    'America/Anchorage': 'AK',
+    'Pacific/Honolulu': 'HI',
+  };
+  const names = { alabama:'AL', alaska:'AK', arizona:'AZ', arkansas:'AR', california:'CA', colorado:'CO', connecticut:'CT', delaware:'DE', 'district of columbia':'DC', florida:'FL', georgia:'GA', hawaii:'HI', idaho:'ID', illinois:'IL', indiana:'IN', iowa:'IA', kansas:'KS', kentucky:'KY', louisiana:'LA', maine:'ME', maryland:'MD', massachusetts:'MA', michigan:'MI', minnesota:'MN', mississippi:'MS', missouri:'MO', montana:'MT', nebraska:'NE', nevada:'NV', 'new hampshire':'NH', 'new jersey':'NJ', 'new mexico':'NM', 'new york':'NY', 'north carolina':'NC', 'north dakota':'ND', ohio:'OH', oklahoma:'OK', oregon:'OR', pennsylvania:'PA', 'rhode island':'RI', 'south carolina':'SC', 'south dakota':'SD', tennessee:'TN', texas:'TX', utah:'UT', vermont:'VT', virginia:'VA', washington:'WA', 'west virginia':'WV', wisconsin:'WI', wyoming:'WY' };
+  const m = {};
+  for (const [tz, list] of Object.entries(zones)) for (const s of list.split(' ')) m[s] = tz;
+  for (const [n, s] of Object.entries(names)) m[n] = m[s];
+  return m;
+})();
+
+// best guess at a contact's time zone from HubSpot's state (or its own hs_timezone when it is a valid zone)
+export function tzFor(props = {}) {
+  const hz = String(props.hs_timezone || '').replace(/^america_slash_/, 'America/').replace(/^pacific_slash_/, 'Pacific/');
+  if (/^[A-Z][a-z]+\/[A-Za-z_]+$/.test(hz)) { try { new Intl.DateTimeFormat('en-US', { timeZone: hz }); return hz; } catch {} }
+  const s = String(props.state || '').trim().toLowerCase().replace(/\./g, '');
+  return TZ_BY_STATE[s.toUpperCase()] || TZ_BY_STATE[s] || DEFAULT_TZ;
+}
+
+export function inWindow(d = new Date(), tz = DEFAULT_TZ) {
+  let parts;
+  try { parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: 'numeric', hourCycle: 'h23' }).formatToParts(d); }
+  catch { parts = new Intl.DateTimeFormat('en-US', { timeZone: DEFAULT_TZ, weekday: 'short', hour: 'numeric', hourCycle: 'h23' }).formatToParts(d); }
+  const wd = parts.find((p) => p.type === 'weekday').value;
+  const h = Number(parts.find((p) => p.type === 'hour').value);
+  return !['Sat', 'Sun'].includes(wd) && h >= SEND_HOURS_LOCAL[0] && h < SEND_HOURS_LOCAL[1];
 }
 
 // pulls SUBJECT and BODY out of a HubSpot note body (which may come back as HTML)
@@ -119,7 +153,7 @@ async function enroll(env, x, c, state) {
     if (!parsed) continue;
     const tok = token();
     const p = c.properties;
-    const st = { email: p.email, first: p.firstname || '', last: p.lastname || '', brand: parsed.brand || p.company || '', subject: parsed.subject, body: parsed.body, step: 0, status: 'active', enrolledAt: Date.now(), nextAt: Date.now(), tok };
+    const st = { email: p.email, first: p.firstname || '', last: p.lastname || '', brand: parsed.brand || p.company || '', subject: parsed.subject, body: parsed.body, step: 0, status: 'active', enrolledAt: Date.now(), nextAt: Date.now(), tok, tz: tzFor(p) };
     await env.REPORTS.put(`seqtok:${tok}`, String(c.id));
     state.contacts[c.id] = st;
     return st;
@@ -161,8 +195,15 @@ export async function sequenceRun(env, x) {
   // 1. new enrollments: contacts marked In Progress that we have not seen yet
   const r = await x.hs(env, 'POST', '/crm/v3/objects/contacts/search', {
     filterGroups: [{ filters: [{ propertyName: 'hs_lead_status', operator: 'EQ', value: 'IN_PROGRESS' }] }],
-    properties: ['email', 'firstname', 'lastname', 'company'], limit: 100,
+    properties: ['email', 'firstname', 'lastname', 'company', 'state', 'hs_timezone'], limit: 100,
   });
+  // keep every active contact's time zone current (also backfills people enrolled before this existed)
+  for (const c of r.results || []) {
+    const st = state.contacts[c.id];
+    if (!st) continue;
+    const tz = tzFor(c.properties);
+    if (st.tz !== tz) { st.tz = tz; dirty = true; }
+  }
   let newOnes = 0;
   for (const c of r.results || []) {
     if (state.contacts[c.id] || newOnes >= 3 || !c.properties.email) continue;
@@ -245,7 +286,7 @@ export async function sequenceRun(env, x) {
   for (const [cid, st] of Object.entries(state.contacts)) {
     if (st.status !== 'active' || sentRun >= PER_RUN) continue;
     const test = isTest(st.email);
-    if (!test && !inWindow()) continue;
+    if (!test && !inWindow(new Date(), st.tz || DEFAULT_TZ)) continue;
     if (!test && (state.sent[day] || 0) >= DAILY_CAP) break;
     if (Date.now() < st.nextAt) continue;
     const step = st.step + 1;
@@ -298,8 +339,15 @@ export async function seenRoute(req, env, x) {
   const tok = String(b.t || '').replace(/[^a-z0-9]/gi, '').slice(0, 20);
   const cid = tok && (await env.REPORTS.get(`seqtok:${tok}`));
   if (!cid) return new Response(null, { status: 204 });
+  // email security scanners (Microsoft Safe Links, Proofpoint, Mimecast...) open every link within
+  // seconds of delivery and run the page like a browser. Ignore them so only real people alert.
+  const ua = (req.headers.get('User-Agent') || '').toLowerCase();
+  if (/bot|crawl|spider|preview|scan|headless|phantom|python|curl|wget|java\/|go-http/.test(ua)) return new Response(null, { status: 204 });
+  const org = String((req.cf && req.cf.asOrganization) || '').toLowerCase();
+  if (/proofpoint|mimecast|barracuda|microsoft|amazon|google cloud|digitalocean|ovh|hetzner|linode|akamai/.test(org)) return new Response(null, { status: 204 });
   const state = await loadState(env);
   const st = state.contacts[cid];
+  if (st && st.lastSentAt && Date.now() - st.lastSentAt < SCANNER_GRACE_MS) return new Response(null, { status: 204 });
   if (st && today() !== st.lastSeenDay) {
     st.lastSeenDay = today(); st.visits = (st.visits || 0) + 1;
     await saveState(env, state);

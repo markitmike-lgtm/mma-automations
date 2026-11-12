@@ -46,10 +46,19 @@ function getSrc(){ try { var v = JSON.parse(localStorage.getItem(KEY) || 'null')
 window.mmaSource = function(){ var v = getSrc() || {}; return { utm: v.utm || {}, ref: v.ref || 'direct', landing: v.landing || location.pathname, page: location.pathname }; };
 
 // a prospect from our outreach email landed here (?mmc=token): tell the worker once per visit
-(function(){ var t = new URLSearchParams(location.search).get('mmc'); if (!t || ME) return;
-  var body = JSON.stringify({ t: t, page: location.pathname });
-  try { navigator.sendBeacon ? navigator.sendBeacon(API + '/seen', new Blob([body], { type: 'text/plain' })) : fetch(API + '/seen', { method: 'POST', body: body, keepalive: true }); } catch (x) {}
-  window.mmaTrack('outreach_click', { page_path: location.pathname });
+// Only counts a real person: not an automated browser, and only after a scroll, tap, key press, or 10
+// seconds on a visible page. Email security scanners load the link and leave, so they never report.
+(function(){ var t = new URLSearchParams(location.search).get('mmc'); if (!t || ME || navigator.webdriver) return;
+  var done = false, timer = null;
+  function report(){ if (done) return; done = true; clearTimeout(timer);
+    ['scroll','pointerdown','keydown','touchstart'].forEach(function(e){ removeEventListener(e, report, true); });
+    var body = JSON.stringify({ t: t, page: location.pathname });
+    try { navigator.sendBeacon ? navigator.sendBeacon(API + '/seen', new Blob([body], { type: 'text/plain' })) : fetch(API + '/seen', { method: 'POST', body: body, keepalive: true }); } catch (x) {}
+    window.mmaTrack('outreach_click', { page_path: location.pathname });
+  }
+  ['scroll','pointerdown','keydown','touchstart'].forEach(function(e){ addEventListener(e, report, { capture: true, passive: true }); });
+  function arm(){ if (document.visibilityState === 'visible' && !timer) timer = setTimeout(report, 10000); }
+  document.addEventListener('visibilitychange', arm); arm();
 })();
 
 // a personal link from Michael (?hi=<name>): tell the worker so he knows they opened it
